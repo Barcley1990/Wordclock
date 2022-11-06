@@ -1,6 +1,6 @@
 [submodule "code/application"]
 	path = code/application
-	url = https://Barcley1990@github.com/Barcley1990/STMWordclock.git
+	url = https://github.com/Barcley1990/STMWordclock
 [submodule "code/bootloader"]
 	path = code/bootloader
-	url = /Users/tobias/Documents/Arduino/OTAWordClock
+	url = https://github.com/Barcley1990/OTAWordclock
