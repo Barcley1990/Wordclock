@@ -1,3 +1,6 @@
 [submodule "code/application"]
 	path = code/application
 	url = /Users/tobias/STM32Projects/STMWordClock
+[submodule "code/bootloader"]
+	path = code/bootloader
+	url = /Users/tobias/Documents/Arduino/OTAWordClock
