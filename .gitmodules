@@ -1,0 +1,3 @@
+[submodule "code/application"]
+	path = code/application
+	url = /Users/tobias/STM32Projects/STMWordClock
