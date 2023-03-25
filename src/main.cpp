@@ -22,6 +22,10 @@ static uint16_t Os_SysTimerCnt;
 //=================================================
 void setup() 
 {
+#ifdef DEBUG_MODE
+  Serial.begin(115200);
+#endif
+  WordClock_Init();
   Os_SysTimerCnt = 0;
 }
 
