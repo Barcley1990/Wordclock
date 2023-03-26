@@ -1,5 +1,7 @@
 //=================================================
 #include "wordclock.h"
+#include "network.h"
+#include "ascii.h"
 #include <Arduino.h>
 #include <ThreeWire.h>  
 #include <RtcDS1302.h>
@@ -18,23 +20,23 @@
 
 //=================================================
 static bool           pin_state = 0;
-const char*           ssid     = "TARDIS";
-const char*           password = "82uqFnUSjUn7YL";
-const char*           WordClock_NTP_Server = "pool.ntp.org";
-const long            WordClock_GTM_Offset_Sec = 3600; // +1h
-const int             WordClock_DayLight_Offset_Sec = 0; // +0h winter time
 ThreeWire             myWire(WORDCLOCK_DAT_PIN, WORDCLOCK_CLK_PIN, WORDCLOCK_RST_PIN); // IO, SCLK, CE
 RtcDS1302<ThreeWire>  Rtc(myWire);
+Network               network();
 
 //=================================================
 void WordClock_Init()
 {
     pinMode(WORDCLOCK_LED_EN_PIN, OUTPUT);
-    Serial.println("12h Wordclock");
+    Serial.println("");
+    Serial.println("");
+    Serial.println(header);
 }
 
 //=================================================
 void WordClock_Runnable_1s()
 {   
-    digitalWrite(WORDCLOCK_LED_EN_PIN, !pin_state);  
+    Serial.println("1000ms");
+    pin_state = !pin_state;
+    digitalWrite(WORDCLOCK_LED_EN_PIN, pin_state);  
 }

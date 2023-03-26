@@ -26,7 +26,7 @@ void setup()
   Serial.begin(115200);
 #endif
   WordClock_Init();
-  Os_SysTimerCnt = 0;
+  Os_SysTimerCnt = 0u;
 }
 
 //=================================================
@@ -35,28 +35,12 @@ void loop()
   uint32_t sys_time = millis();
   static uint32_t old_time = 0u;
 
-  if((sys_time - old_time) >= OS_10MS_EVENT)
-  {
-    Os_SysTimerCnt++;
-    old_time = sys_time;
-  }
+if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
+  old_time = sys_time;   // save the last time you blinked the LED
+  WordClock_Runnable_1s();
+}
 
-  if((Os_SysTimerCnt % OS_100MS_EVENT) >= OS_100MS_EVENT)
-  {
-    // Exec
-
-  }
-
-  if((Os_SysTimerCnt % OS_1000MS_EVENT) >= OS_1000MS_EVENT)
-  {
-    // Exec
-    WordClock_Runnable_1s();
-  }
-
-  // Reset counter
-  if(Os_SysTimerCnt >= 1000u)
-    Os_SysTimerCnt = 0u;
+  delay(1);
 }
 
 
-//=================================================
