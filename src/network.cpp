@@ -3,20 +3,13 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
+//===============================================
 
-
-
-
-
-Network::Network()
-{
-
-}
 
 //===============================================
 void Network::GetNTPTime(struct tm* timeinfo)
 { 
-  WiFi.begin(ssid, password);
+  WiFi.begin(_ssid, _password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
@@ -38,3 +31,5 @@ void Network::GetNTPTime(struct tm* timeinfo)
   WiFi.disconnect(true);
   WiFi.mode(WIFI_OFF);
 }
+
+

@@ -40,7 +40,23 @@ if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
   WordClock_Runnable_1s();
 }
 
-  delay(1);
+
+#ifdef DEBUG_MODE
+  // if there's any serial available, read it:
+  while (Serial.available() > 0) {
+    DEBUG_HOUR = Serial.parseInt();
+    DEBUG_MINUTE = Serial.parseInt();
+
+    // look for the newline. That's the end of your sentence:
+    if (Serial.read() == '\n') {
+      Serial.print("--DEBUG MODE-- Time set to: ");
+      Serial.print(DEBUG_HOUR);
+      Serial.print(":");
+      Serial.println(DEBUG_MINUTE);
+    }
+  }
+#endif
+
 }
 
 

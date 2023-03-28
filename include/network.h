@@ -1,4 +1,12 @@
+/*-------------------------------------------------------------------------
+Network library
 
+Written by Tobias Nuss
+
+-------------------------------------------------------------------------
+This file is part of the Makuna/Rtc library.
+
+-------------------------------------------------------------------------*/
 #ifndef NETWORK_H
 #define NETWROK_H
 
@@ -8,13 +16,17 @@
 class Network
 {
     public:
-        Network();
+        Network(const char *ssid, const char *pwd)
+        {
+            this->_ssid = ssid;
+            this->_password = pwd;
+        }
         void GetNTPTime(struct tm* timeinfo);
         
     
     private:
-        const char*           ssid     = "TARDIS";
-        const char*           password = "82uqFnUSjUn7YL";  
+        const char*           _ssid     = "";
+        const char*           _password = "";  
         const char*           NTP_Server = "pool.ntp.org";
         const long            GTM_Offset_Sec = 3600; // +1h
         const int             DayLight_Offset_Sec = 0; // +0h winter time
