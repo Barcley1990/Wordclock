@@ -8,6 +8,7 @@
 #define OS_10MS_EVENT   10
 #define OS_100MS_EVENT  100
 #define OS_1000MS_EVENT 1000
+#define SERIAL_BUFF_SIZE 100
 
 //=================================================
 #ifdef DEBUG_MODE
@@ -27,6 +28,7 @@ void setup()
 #endif
   WordClock_Init();
   Os_SysTimerCnt = 0u;
+  
 }
 
 //=================================================
@@ -34,6 +36,8 @@ void loop()
 {
   uint32_t sys_time = millis();
   static uint32_t old_time = 0u;
+  int temp_int1 =0;
+  int temp_int2 =0;
 
 if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
   old_time = sys_time;   // save the last time you blinked the LED
@@ -44,17 +48,23 @@ if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
 #ifdef DEBUG_MODE
   // if there's any serial available, read it:
   while (Serial.available() > 0) {
-    DEBUG_HOUR = Serial.parseInt();
-    DEBUG_MINUTE = Serial.parseInt();
-
-    // look for the newline. That's the end of your sentence:
-    if (Serial.read() == '\n') {
-      Serial.print("--DEBUG MODE-- Time set to: ");
-      Serial.print(DEBUG_HOUR);
-      Serial.print(":");
-      Serial.println(DEBUG_MINUTE);
-    }
+    temp_int1 = Serial.parseInt();
+    temp_int2 = Serial.parseInt();
   }
+
+
+  if(temp_int1 != 0 && temp_int2 != 0)
+  {
+    DEBUG_HOUR = temp_int1;
+    DEBUG_MINUTE = temp_int2;
+    temp_int1 = 0;
+    temp_int2 = 0;
+  }
+  
+  
+
+  
+  
 #endif
 
 }
