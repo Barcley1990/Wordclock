@@ -2,6 +2,7 @@
 //=================================================
 #include <Arduino.h>
 #include "wordclock.h"
+#include "network.h"
 
 //=================================================
 #define OS_1MS_EVENT    1
@@ -36,16 +37,19 @@ void loop()
 {
   uint32_t sys_time = millis();
   static uint32_t old_time = 0u;
-  int temp_int1 =0;
-  int temp_int2 =0;
 
 if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
   old_time = sys_time;   // save the last time you blinked the LED
   WordClock_Runnable_1s();
 }
 
+// Execute Server Handle
+Wifi_ServerExec();
+
 
 #ifdef DEBUG_MODE
+  int temp_int1 =0;
+  int temp_int2 =0;
   // if there's any serial available, read it:
   while (Serial.available() > 0) {
     temp_int1 = Serial.parseInt();
@@ -60,7 +64,7 @@ if (sys_time - old_time >= OS_1000MS_EVENT) {    // check if 1000ms passed
     temp_int1 = 0;
     temp_int2 = 0;
   }
-  
+
   
 
   
