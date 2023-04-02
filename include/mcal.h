@@ -1,6 +1,7 @@
 #ifndef MCAL_H
 #define MCAL_H
 #define MCAL_BOOT_PIN      0u
+#define MCAL_SDA_PIN       2u
 #define MCAL_WIFI_EN_PIN   4u
 #define MCAL_LED_DIN_PIN   5u
 #define MCAL_DAT_PIN       12u       

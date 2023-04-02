@@ -4,7 +4,7 @@ Network library
 Written by Tobias Nuss
 
 -------------------------------------------------------------------------
-This file is part of the Makuna/Rtc library.
+
 
 -------------------------------------------------------------------------*/
 #ifndef NETWORK_H
@@ -12,7 +12,12 @@ This file is part of the Makuna/Rtc library.
 
 #include "time.h"
 
+
+
 void Wifi_Setup(const char *ssid, const char *pwd);
 void Wifi_Get_NtpTime(struct tm* timeinfo);
+void Wifi_StartAP();
+void Wifi_StopAP();
+void Wifi_ServerExec();
 
 #endif
