@@ -3,7 +3,10 @@
 #include <Arduino.h>
 
 //=================================================
-#define DEBUG_MODE           true
+#define DEBUG_MODE          true
+#define SOFTWARE_VERSION_MAYOR 0
+#define SOFTWARE_VERSION_MINOR 1
+#define SOFTWARE_VERSION_PATCH 0
 #define EXEPTION while(1){;} 
 
 

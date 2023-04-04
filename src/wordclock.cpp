@@ -9,7 +9,12 @@
 #include <Wire.h>
 
 //=================================================
-#define WORDCLOCK_BH1750_ADDR 0x23u
+#define WORDCLOCK_BH1750_ADDR (0x23u)
+#define WORDCLOCK_EEPROM_SIZE (512u)
+#define WORDCLOCK_EEPROM_SSID_ADDR (0x0u);
+#define WORDCLOCK_EEPROM_SSID_SIZE (0x8u);
+#define WORDCLOCK_EEPROM_PWD_ADDR (0x8u);
+#define WORDCLOCK_EEPROM_PWD_SIZE (0x8u);
 
 // Function Macros:
 #define WORDCLOCK_12H_FORMAT(h) (((h)>12) ? ((h)-12) : (h))
@@ -17,6 +22,8 @@
 //=================================================
 BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
 static bool Wordclock_BH1750_Intitialised = false;
+
+String WordClock_GetVersion();
 
 //=================================================
 void WordClock_Init()
@@ -27,19 +34,18 @@ void WordClock_Init()
     Serial.println("");
     Serial.println("");
     Serial.println(header);
+    Serial.print("\nVersion: ");
+    Serial1.println(WordClock_GetVersion());
     Serial.flush();
 
     // Setup Wifi
-    Wifi_Setup("TARDIS", "82uqFnUSjUn7YL");
+    Wifi_Setup();
 
     // Get NTP Server Time
     Wifi_Get_NtpTime(&ntp_time);
 
     // Setup RTC
     Rtc_Setup(&ntp_time);
-
-    // Start AP
-    Wifi_StartAP();
 
     // Setup Light Meter
     Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
@@ -87,4 +93,13 @@ void WordClock_Runnable_1s()
     RtcDateTime now = Rtc.GetDateTime();
     LED_ShowTime(WORDCLOCK_12H_FORMAT(now.Hour()), now.Minute(), now.Second());
 #endif
+}
+
+//===============================================
+String WordClock_GetVersion()
+{
+    return (String)(
+        String(SOFTWARE_VERSION_MAYOR)+ "." + 
+        String(SOFTWARE_VERSION_MINOR)+ "." + 
+        String(SOFTWARE_VERSION_PATCH));
 }
