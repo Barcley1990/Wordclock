@@ -18,4 +18,6 @@ void Wifi_Setup();
 void Wifi_Get_NtpTime(struct tm* timeinfo);
 void Wifi_ServerExec();
 
+#define USEOTA
+
 #endif

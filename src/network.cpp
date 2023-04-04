@@ -9,8 +9,8 @@
 #include <WiFiManager.h>  
 
 #ifdef USEOTA
-#include <WiFiUdp.h>
-#include <ArduinoOTA.h>
+#include <ESP8266mDNS.h>
+#include <ESP8266HTTPUpdateServer.h>
 #endif
 
 
@@ -29,8 +29,10 @@ const long            GTM_Offset_Sec = 3600; // +1h
 const int             DayLight_Offset_Sec = 3600; // +0h winter time
 //ESP8266WebServer      Server(80);
 NetworkModeType Wifi_Mode = Network_Offline;
-std::unique_ptr<ESP8266WebServer> Server;
-
+ESP8266WebServer Server(80);
+#ifdef USEOTA
+ESP8266HTTPUpdateServer httpUpdater;
+#endif
 
 //===============================================
 //LOCAL FUNCTION DECLARATIONS
@@ -59,26 +61,30 @@ void Wifi_Setup()
   {
     Serial.println("Failed to connect");
     // ESP.restart();
+    while(1){;} 
   } 
   else 
   {
     Serial.println("connected...");
 
-    Server.reset(new ESP8266WebServer(WiFi.localIP(), 80));
-    Server->on("/", handleRoot);
+    Server.on("/", handleRoot);
     //Server->on("/inline", []() {
     //  Server->send(200, "text/plain", "this works as well");
     //});
-    Server->onNotFound(handleNotFound);
-    Server->begin();
-    Serial.println("HTTP server started");
+    Server.onNotFound(handleNotFound);
+#ifdef USEOTA
+    httpUpdater.setup(&Server);
+#endif
+    Server.begin();
+    Serial.print("HTTP server started on port 80: ");
     Serial.println(WiFi.localIP());
+#ifdef USEOTA
+    MDNS.begin("WordClock_Webupdate");
+    MDNS.addService("http", "tcp", 80);
+    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", "WordClock_Webupdate");
+#endif
     Wifi_Mode = Network_ServerMode;
   }
-
-#ifdef USEOTA
-  OTA_Init();
-#endif
 }
 
 //===============================================
@@ -103,10 +109,10 @@ void Wifi_Get_NtpTime(struct tm* timeinfo)
 //===============================================
 void handleRoot() 
 {
-  Server->send(200, "text/plain", "hello from esp8266!");
+  Server.send(200, "text/plain", "hello from esp8266!");
 
   // tell if a client has connected
-  String addy = Server->client().remoteIP().toString();
+  String addy = Server.client().remoteIP().toString();
   Serial.println("Client connected on: " + addy);
 }
 
@@ -115,62 +121,28 @@ void handleNotFound()
 {
   String message = "File Not Found\n\n";
   message += "URI: ";
-  message += Server->uri();
+  message += Server.uri();
   message += "\nMethod: ";
-  message += (Server->method() == HTTP_GET) ? "GET" : "POST";
+  message += (Server.method() == HTTP_GET) ? "GET" : "POST";
   message += "\nArguments: ";
-  message += Server->args();
+  message += Server.args();
   message += "\n";
-  for (uint8_t i = 0; i < Server->args(); i++) {
-    message += " " + Server->argName(i) + ": " + Server->arg(i) + "\n";
+  for (uint8_t i = 0; i < Server.args(); i++) {
+    message += " " + Server.argName(i) + ": " + Server.arg(i) + "\n";
   }
-  Server->send(404, "text/plain", message);
+  Server.send(404, "text/plain", message);
 }
 
-//===============================================
-#ifdef USEOTA
-void OTA_Init()
-{
-  ArduinoOTA.setHostname("WordClock_OTA");
-  ArduinoOTA.setPasswordHash("21232f297a57a5a743894a0e4a801fc3");
-  ArduinoOTA.onStart([]() {
-    String type;
-    if (ArduinoOTA.getCommand() == U_FLASH)
-      type = "sketch";
-    else // U_SPIFFS
-      type = "filesystem";
 
-    // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-    Serial.println("Start updating " + type);
-  });
-  ArduinoOTA.onEnd([]() {
-    Serial.println("\nEnd");
-  });
-  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
-    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-  });
-  ArduinoOTA.onError([](ota_error_t error) {
-    Serial.printf("Error[%u]: ", error);
-    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-    else if (error == OTA_END_ERROR) Serial.println("End Failed");
-  });
-  ArduinoOTA.begin();
-  Serial.println("OTA Ready!");
-}
-#endif
 
 //===============================================
 void Wifi_ServerExec()
 {
   if(Wifi_Mode != Network_Offline)
   {
-    Server->handleClient();
+    Server.handleClient();
+    #ifdef USEOTA
+      MDNS.update();
+    #endif
   }
-
-#ifdef USEOTA
-  ArduinoOTA.handle();
-#endif
 }

@@ -9,6 +9,24 @@
         "sstream": "cpp",
         "stop_token": "cpp",
         "streambuf": "cpp",
-        "socket": "cpp"
+        "socket": "cpp",
+        "array": "cpp",
+        "deque": "cpp",
+        "forward_list": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "internet": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "ranges": "cpp",
+        "regex": "cpp",
+        "bitset": "cpp",
+        "executor": "cpp",
+        "memory": "cpp",
+        "random": "cpp",
+        "future": "cpp",
+        "optional": "cpp"
     }
 }
