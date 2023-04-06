@@ -1,3 +1,17 @@
+/**********************************************************************************************************************
+ * @file network.cpp
+ * @author Tobias Nuß
+ * @brief 
+ * @version 0.1
+ * @date 2023-04-06
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ ***********************************************************************************************************************/
+
+/***********************************************************************************************************************
+ * Include Area
+ ***********************************************************************************************************************/
 #include "network.h"
 #include "network_cbk.h"
 #include "mcal.h"
@@ -13,6 +27,9 @@
 #include <ESP8266HTTPUpdateServer.h>
 #endif
 
+/***********************************************************************************************************************
+ * Private Variables
+ ***********************************************************************************************************************/
 
 typedef enum NetworkMode
 {
@@ -34,16 +51,23 @@ ESP8266WebServer Server(80);
 ESP8266HTTPUpdateServer httpUpdater;
 #endif
 
-//===============================================
-//LOCAL FUNCTION DECLARATIONS
-//===============================================
+/***********************************************************************************************************************
+ * Local function declarations
+ ***********************************************************************************************************************/
 void handleRoot();
 void handleNotFound();
 #ifdef USEOTA
 void OTA_Init();
 #endif
 
-//===============================================
+/***********************************************************************************************************************
+ * Function definitions
+ ***********************************************************************************************************************/
+
+/**
+ * @brief Setup function
+ * 
+ */
 void Wifi_Setup()
 {
   bool retVal;
@@ -87,7 +111,11 @@ void Wifi_Setup()
   }
 }
 
-//===============================================
+/**
+ * @brief Receive the current NTP time
+ * 
+ * @param timeinfo 
+ */
 void Wifi_Get_NtpTime(struct tm* timeinfo)
 { 
   // Init and get the time
@@ -106,7 +134,10 @@ void Wifi_Get_NtpTime(struct tm* timeinfo)
   }
 }
 
-//===============================================
+/**
+ * @brief Handle for http server
+ * 
+ */
 void handleRoot() 
 {
   Server.send(200, "text/plain", "hello from esp8266!");
@@ -116,7 +147,10 @@ void handleRoot()
   Serial.println("Client connected on: " + addy);
 }
 
-//===============================================
+/**
+ * @brief Handle for http server
+ * 
+ */
 void handleNotFound() 
 {
   String message = "File Not Found\n\n";
@@ -135,7 +169,10 @@ void handleNotFound()
 
 
 
-//===============================================
+/**
+ * @brief Execute http server handle
+ * 
+ */
 void Wifi_ServerExec()
 {
   if(Wifi_Mode != Network_Offline)
