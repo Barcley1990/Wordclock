@@ -1,4 +1,26 @@
-//=================================================
+/**
+ * @file wordclock.cpp
+ * @author Tobias Nuß
+ * @brief 
+ * @version 0.1
+ * @date 2023-04-07
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ * Microcontroller ESP8266
+ * Module WROOM-02
+ * Frequency 80MHz
+ * Flash 2MB
+ * RAM 80KB
+ * Vendor Espressif
+ * 
+ */
+
+
+
+/***********************************************************************************************************************
+ * Include area
+ ***********************************************************************************************************************/
 #include "wordclock.h"
 #include "mcal.h"
 #include "rtc.h"
@@ -19,24 +41,36 @@
 // Function Macros:
 #define WORDCLOCK_12H_FORMAT(h) (((h)>12) ? ((h)-12) : (h))
 
-//=================================================
+/***********************************************************************************************************************
+ * Private Variables
+ ***********************************************************************************************************************/
 BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
 static bool Wordclock_BH1750_Intitialised = false;
 
+/***********************************************************************************************************************
+ * Function declarations
+ ***********************************************************************************************************************/
 String WordClock_GetVersion();
 
-//=================================================
+/***********************************************************************************************************************
+ * Function definitions
+ ***********************************************************************************************************************/
+
+/**
+ * @brief WordClock_Init
+ * 
+ */
 void WordClock_Init()
 {
+    // local variable for time data
     struct tm ntp_time;
 
-    pinMode(MCAL_LED_EN_PIN, OUTPUT);
+    // Print software version
     Serial.println("");
     Serial.println("");
     Serial.println(header);
     Serial.print("\nVersion: ");
     Serial1.println(WordClock_GetVersion());
-    Serial.flush();
 
     // Setup Wifi
     Wifi_Setup();
@@ -65,16 +99,16 @@ void WordClock_Init()
         Serial.print(lux);
         Serial.println(" lx");
     }
+
+    LED_Init(255, 160, 140, 20);
 }
 
-//=================================================
+/**
+ * @brief Called every second
+ * 
+ */
 void WordClock_Runnable_1s()
-{  
-    
-
-    //Serial.println("1000ms");
-    //pin_state = !pin_state;
-    //digitalWrite(MCAL_LED_EN_PIN, pin_state);  
+{   
 
 #ifdef DEBUG_MODE
     static uint8_t temp_h, temp_min;

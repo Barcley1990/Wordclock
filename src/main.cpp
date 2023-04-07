@@ -49,10 +49,10 @@ void setup()
 {
 #ifdef DEBUG_MODE
   Serial.begin(115200);
+  delay(100);
 #endif
   WordClock_Init();
   Os_SysTimerCnt = 0u;
-  
 }
 
 /**

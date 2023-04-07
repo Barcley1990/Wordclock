@@ -77,10 +77,9 @@ const LED_Text_Type LED_Text[LED_NUM_OF_WORDS] =
   {"ZWANZIG", 11, 0, 0}, //<--
 };
 
-
-
 Adafruit_NeoPixel LED_Pixels = Adafruit_NeoPixel(LED_WS2812_MAX_LEDS, LED_WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800);
 static uint32_t LED_Color;
+static bool LED_IsInitialised = false;
 
 /***********************************************************************************************************************
  * Local function declarations
@@ -89,6 +88,8 @@ void LED_SetWord(const String s);
 void LED_SetMinute(uint8_t min);
 String LED_NumToString(const uint8_t num);
 void LED_RemoveS();
+void LED_SetColor(uint32_t c);
+void LED_SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) ;
 
 /***********************************************************************************************************************
  * Function definitions
@@ -97,14 +98,19 @@ void LED_RemoveS();
 /**
  * @brief LED_Init
  * 
+ * @param c Color to initialize
+ * @param brightness Brightness to initialized in percentage
  */
-void LED_Init()
+void LED_Init(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness)
 {
+  pinMode(MCAL_LED_EN_PIN, OUTPUT);
   LED_Pixels.begin();
   LED_Pixels.clear();
   LED_Pixels.show();
-  //LED_Pixels.setBrightness(255);
-  LED_Color = LED_Pixels.Color(20, 20, 20);
+  LED_Pixels.setBrightness(map(brightness, 0, 255, 0, 100));
+  LED_Color = LED_Pixels.Color(r, g, b);
+  LED_IsInitialised = true;
+  LED_TurnPwrOn();
 }
 
 /**
@@ -233,7 +239,11 @@ void LED_ShowTime(uint8_t hour, uint8_t minute, uint8_t second)
   }
 
   LED_SetWord("UHR");
-  LED_Pixels.show();
+
+  if(LED_IsInitialised == true)
+    LED_Pixels.show();
+  else
+    Serial.println("Error: Neopixels not yet initialized!");
 }
 
 /**
@@ -333,12 +343,50 @@ void LED_RemoveS()
   LED_Pixels.setPixelColor(LED_PIXEL_S, 0);
 }
 
+/**
+ * @brief LED_SetColor
+ * 
+ * @param c 
+ */
+void LED_SetColor(uint32_t c)
+{
+  LED_Color = c;
+}
 
+/**
+ * @brief Turn LED power off to safe energy
+ * 
+ */
+void LED_TurnPwrOff()
+{
+  digitalWrite(MCAL_LED_EN_PIN, LOW);
+  LED_Pixels.clear();
+}
 
+/**
+ * @brief Turn LED power on
+ * 
+ */
+void LED_TurnPwrOn()
+{
+  LED_Pixels.clear();
+  digitalWrite(MCAL_LED_EN_PIN, HIGH);
+  LED_Pixels.show();
+}
 
-
-
-
+/**
+ * @brief Set the Color Brightness object
+ * 
+ * @param n 
+ * @param r 
+ * @param g 
+ * @param b 
+ * @param brightness 
+ */
+void LED_SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) 
+{
+	LED_Pixels.setPixelColor(n, (brightness*r/255) , (brightness*g/255), (brightness*b/255));
+}
 
 
 
