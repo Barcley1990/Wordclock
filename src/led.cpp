@@ -1,3 +1,17 @@
+/**
+ * @file led.cpp
+ * @author Tobias Nuß
+ * @brief 
+ * @version 0.1
+ * @date 2023-04-07
+ * 
+ * @copyright Copyright (c) 2023
+ * 
+ */
+
+/***********************************************************************************************************************
+ * Include area
+ ***********************************************************************************************************************/
 #include "led.h"
 #include "mcal.h"
 #include <Adafruit_NeoPixel.h>
@@ -25,7 +39,11 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define LED_NUM_OF_WORDS            (21)
 #define LED_PIXEL_S                 (56)
 
+#define LED_ELEMENTS_IN_TEXT_TABLE sizeof(LED_Text) / sizeof(LED_Text[0])
 
+/***********************************************************************************************************************
+ * Private Variables
+ ***********************************************************************************************************************/
 typedef struct
 {
   String Text;
@@ -59,22 +77,27 @@ const LED_Text_Type LED_Text[LED_NUM_OF_WORDS] =
   {"ZWANZIG", 11, 0, 0}, //<--
 };
 
-#define LED_ELEMENTS_IN_TEXT_TABLE sizeof(LED_Text) / sizeof(LED_Text[0])
+
 
 Adafruit_NeoPixel LED_Pixels = Adafruit_NeoPixel(LED_WS2812_MAX_LEDS, LED_WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800);
 static uint32_t LED_Color;
 
-//=====================================================================
-//Function declarations
-//=====================================================================
+/***********************************************************************************************************************
+ * Local function declarations
+ ***********************************************************************************************************************/
 void LED_SetWord(const String s);
 void LED_SetMinute(uint8_t min);
 String LED_NumToString(const uint8_t num);
 void LED_RemoveS();
 
-//=====================================================================
-//Function definitions
-//=====================================================================
+/***********************************************************************************************************************
+ * Function definitions
+ ***********************************************************************************************************************/
+
+/**
+ * @brief LED_Init
+ * 
+ */
 void LED_Init()
 {
   LED_Pixels.begin();
@@ -84,7 +107,13 @@ void LED_Init()
   LED_Color = LED_Pixels.Color(20, 20, 20);
 }
 
-//=====================================================================
+/**
+ * @brief LED_ShowTime
+ * 
+ * @param hour 
+ * @param minute 
+ * @param second 
+ */
 void LED_ShowTime(uint8_t hour, uint8_t minute, uint8_t second)
 {
   bool rand = random(0,1);
@@ -207,7 +236,11 @@ void LED_ShowTime(uint8_t hour, uint8_t minute, uint8_t second)
   LED_Pixels.show();
 }
 
-//=====================================================================
+/**
+ * @brief LED_SetWord
+ * 
+ * @param s 
+ */
 void LED_SetWord(const String s)
 {
   uint8_t listelement;
@@ -244,7 +277,11 @@ void LED_SetWord(const String s)
   }
 }
 
-//=====================================================================
+/**
+ * @brief LED_SetMinute
+ * 
+ * @param min 
+ */
 void LED_SetMinute(uint8_t min)
 {
   if(min < 5 && min != 0)
@@ -253,7 +290,12 @@ void LED_SetMinute(uint8_t min)
   }
 }
 
-//=====================================================================
+/**
+ * @brief LED_NumToString
+ * 
+ * @param num 
+ * @return String 
+ */
 String LED_NumToString(const uint8_t num)
 {
   String s = "";
@@ -282,7 +324,10 @@ String LED_NumToString(const uint8_t num)
   return s;
 }
 
-//=====================================================================
+/**
+ * @brief LED_RemoveS
+ * 
+ */
 void LED_RemoveS()
 {
   LED_Pixels.setPixelColor(LED_PIXEL_S, 0);
