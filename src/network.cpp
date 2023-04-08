@@ -23,6 +23,8 @@
 #include <WiFiManager.h>  
 
 #ifdef USEOTA
+#include "html/OTAWeb.h"
+#include <LittleFS.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #endif
@@ -92,9 +94,11 @@ void Wifi_Setup()
     Serial.println("connected...");
 
     Server.on("/", handleRoot);
-    //Server->on("/inline", []() {
-    //  Server->send(200, "text/plain", "this works as well");
-    //});
+    // handler for the /update form page
+    Server.on("/update", HTTP_GET, [&](){
+      Server.sendHeader(F("Content-Encoding"), F("gzip"));
+      Server.send_P(200, "text/html", (const char*)index_color_html_gz, (int)index_color_html_gz_len);
+    });
     Server.onNotFound(handleNotFound);
 #ifdef USEOTA
     httpUpdater.setup(&Server);
@@ -167,7 +171,30 @@ void handleNotFound()
   Server.send(404, "text/plain", message);
 }
 
+//===============================================
+bool loadFromFS(String path, String dataType) {
+  Serial.print("Requested page -> ");
+  Serial.println(path);
+  if (LittleFS.exists(path)){
+      File dataFile = LittleFS.open(path, "r");
+      if (!dataFile) {
+          handleNotFound();
+          return false;
+      }
 
+      if (Server.streamFile(dataFile, dataType) != dataFile.size()) {
+        Serial.println("Sent less data than expected!");
+      }else{
+          Serial.println("Page served!");
+      }
+
+      dataFile.close();
+  }else{
+      handleNotFound();
+      return false;
+  }
+  return true;
+}
 
 /**
  * @brief Execute http server handle
