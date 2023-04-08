@@ -87,7 +87,6 @@ static bool LED_IsInitialised = false;
 void LED_SetWord(const String s);
 void LED_SetMinute(uint8_t min);
 String LED_NumToString(const uint8_t num);
-void LED_RemoveS();
 void LED_SetColor(uint32_t c);
 void LED_SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) ;
 
@@ -133,7 +132,6 @@ void LED_ShowTime(uint8_t hour, uint8_t minute, uint8_t second)
   {
     LED_SetMinute(minute);
     LED_SetWord(LED_NumToString(hour));
-    if(hour == 1u) LED_RemoveS();
   }
   //Es ist 5 nach
   else if((minute >= 5u) && (minute < 10u))
@@ -316,7 +314,7 @@ String LED_NumToString(const uint8_t num)
 
   switch (temp)
   {
-    case 1:  s = "EINS";   break;
+    case 1:  s = "EIN";    break;
     case 2:  s = "ZWEI";   break;
     case 3:  s = "DREI";   break;
     case 4:  s = "VIER";   break;
@@ -332,15 +330,6 @@ String LED_NumToString(const uint8_t num)
   }
 
   return s;
-}
-
-/**
- * @brief LED_RemoveS
- * 
- */
-void LED_RemoveS()
-{
-  LED_Pixels.setPixelColor(LED_PIXEL_S, 0);
 }
 
 /**
