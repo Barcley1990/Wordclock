@@ -14,3 +14,15 @@ Wordclock runs on WROOM-02 module:
 
 http://espressif.com/en/products/hardware/esp-wroom-02/resources
 
+## This project is using following parts:
+- WROOM-02 module
+- BH1750 Light sensor
+- DC1302 RTC module
+- WS2812B
+
+## This project is using following libraries:
+- makuna/RTC@^2.3.6
+- arduino-libraries/NTPClient@^3.2.1
+- adafruit/Adafruit NeoPixel@^1.11.0
+- claws/BH1750@^1.3.0
+- tzapu/WiFiManager@^0.16.0
