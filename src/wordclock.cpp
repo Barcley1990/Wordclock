@@ -25,7 +25,7 @@
 #include "mcal.h"
 #include "rtc.h"
 #include "network.h"
-#include "led.h"
+#include "neo_matrix.h"
 #include "ascii.h"
 #include <BH1750.h>
 #include <Wire.h>
@@ -46,6 +46,7 @@
  ***********************************************************************************************************************/
 BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
 static bool Wordclock_BH1750_Intitialised = false;
+NeoMatrix WordClock = NeoMatrix();
 
 /***********************************************************************************************************************
  * Function declarations
@@ -106,10 +107,6 @@ void WordClock_Init()
     {
         Serial.println("Light meassurement failed");
     }
-
-    // Initialize LEDs
-    Serial.println("LEDS init");
-    LED_Init(255, 160, 140, 20);
 }
 
 /**
@@ -127,7 +124,7 @@ void WordClock_Runnable_1s()
         Serial.print(DEBUG_HOUR);
         Serial.print(":");
         Serial.println(DEBUG_MINUTE);
-        LED_ShowTime(DEBUG_HOUR, DEBUG_MINUTE, 0);
+        WordClock.ShowTime(DEBUG_HOUR, DEBUG_MINUTE);
         temp_h = DEBUG_HOUR;
         temp_min = DEBUG_MINUTE;
     }
