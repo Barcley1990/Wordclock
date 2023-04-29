@@ -70,7 +70,9 @@ void WordClock_Init()
     Serial.println("");
     Serial.println(header);
     Serial.print("\nVersion: ");
-    Serial1.println(WordClock_GetVersion());
+    Serial.println(WordClock_GetVersion());
+    Serial.println("Start wordclock");
+    delay(100);
 
     // Setup Wifi
     Wifi_Setup();
@@ -91,6 +93,7 @@ void WordClock_Init()
     }
 
     // Print Lux
+    delay(500);
     if ((Wordclock_BH1750_Intitialised == true) && 
         (lightMeter.measurementReady() == true)) 
     {
@@ -99,7 +102,13 @@ void WordClock_Init()
         Serial.print(lux);
         Serial.println(" lx");
     }
+    else
+    {
+        Serial.println("Light meassurement failed");
+    }
 
+    // Initialize LEDs
+    Serial.println("LEDS init");
     LED_Init(255, 160, 140, 20);
 }
 

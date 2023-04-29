@@ -110,6 +110,14 @@ void LED_Init(uint8_t r, uint8_t g, uint8_t b, uint8_t brightness)
   LED_Color = LED_Pixels.Color(r, g, b);
   LED_IsInitialised = true;
   LED_TurnPwrOn();
+
+  // TEST ALL LEDs
+  for(int i=0; i<LED_WS2812_MAX_LEDS; i++)
+  {
+    LED_Pixels.setPixelColor(i,LED_Color);
+    LED_Pixels.show();
+    delay(50);
+  }
 }
 
 /**
