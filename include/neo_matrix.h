@@ -33,8 +33,39 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 
 #include "mcal.h"
 
-#define PWR_MAX_VOLTS           (5u)
-#define PWR_MAX_AMPS            (1000u)
+#define MATRIX_SERPENTINELAYOUT (true)
+#define MATRIX_VERTIACAL        (false)
+// Set 'kMatrixSerpentineLayout' to false if your pixels are 
+// laid out all running the same way, like this:
+//
+//     0 >  1 >  2 >  3 >  4
+//                         |
+//     .----<----<----<----'
+//     |
+//     5 >  6 >  7 >  8 >  9
+//                         |
+//     .----<----<----<----'
+//     |
+//    10 > 11 > 12 > 13 > 14
+//                         |
+//     .----<----<----<----'
+//     |
+//    15 > 16 > 17 > 18 > 19
+//
+// Set 'kMatrixSerpentineLayout' to true if your pixels are 
+// laid out back-and-forth, like this:
+//
+//     0 >  1 >  2 >  3 >  4
+//                         |
+//                         |
+//     9 <  8 <  7 <  6 <  5
+//     |
+//     |
+//    10 > 11 > 12 > 13 > 14
+//                        |
+//                        |
+//    19 < 18 < 17 < 16 < 15
+
 #define WS2812_ENABLE_PIN       (MCAL_LED_EN_PIN)
 #define WS2812_DATA_PIN         (MCAL_LED_DIN_PIN)
 #define ROWs                    (10u)
@@ -49,8 +80,10 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 class NeoMatrix 
 {
 private:
-    Adafruit_NeoPixel led_handle;
-    typedef struct WordClock_Text
+    Adafruit_NeoPixel* led_handle = NULL;
+    const bool kMatrixSerpentineLayout = MATRIX_SERPENTINELAYOUT;
+    const bool kMatrixVertical = MATRIX_VERTIACAL;
+    typedef struct WordClock_Text_DE
     {
         String Text;
         uint8_t FirstPixel;
@@ -84,19 +117,41 @@ private:
     void DrawWord(const String s);
     void SetMinute(uint8_t min);
     String NumToString(const uint8_t num);
-    void SetColor(uint32_t c);
     void SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) ;
+    void SetPixelColor(uint16_t n, uint32_t c) {
+        if(led_handle != NULL)
+            led_handle->setPixelColor(n, c);
+        else
+            Serial.print("Error");
+    }
+    void SetPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
+        if(led_handle != NULL)
+            led_handle->setPixelColor(n, r, g, b);
+        else
+            Serial.print("Error");
+    }
+    void Update() {
+        if(led_handle != NULL)
+            led_handle->show();
+        else
+            Serial.print("Error");
+    }
+    void Clear() {
+        if(led_handle != NULL)
+            led_handle->clear();
+        else
+            Serial.print("Error");
+    }
     
 public:
-    NeoMatrix() 
-    {
+    NeoMatrix() {
         pinMode(MCAL_LED_EN_PIN, OUTPUT);
-        led_handle = Adafruit_NeoPixel(WS2812_MAX_LEDS, WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800); 
-        led_handle.begin();
-        led_handle.clear();
-        led_handle.show();
-        led_handle.setBrightness(map(40, 0, 255, 0, 100));
-        Color = led_handle.Color(20, 20, 20);
+        led_handle = new Adafruit_NeoPixel(WS2812_MAX_LEDS, WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800); 
+        led_handle->begin();
+        led_handle->clear();
+        led_handle->show();
+        led_handle->setBrightness(map(40, 0, 255, 0, 100));
+        Color = led_handle->Color(20, 20, 20);
     }
     ~NeoMatrix()
     {
@@ -107,8 +162,8 @@ public:
     void PowerOff();
     void StartupLEDsTest(void);
     void ShowTime(uint8_t hour, uint8_t minute);
+    void SetColor(uint32_t c);
     
-    void Update() {led_handle.show();}
     void SetLedXY(uint8_t x, uint8_t y, uint32_t color);
     void SetLed(uint8_t i, uint32_t color);
 

@@ -28,7 +28,7 @@
 void NeoMatrix::PowerOff()
 {
   digitalWrite(MCAL_LED_EN_PIN, LOW);
-  led_handle.clear();
+  Clear();
 }
 
 /**
@@ -37,9 +37,9 @@ void NeoMatrix::PowerOff()
  */
 void NeoMatrix::PowerOn()
 {
-  led_handle.clear();
+  Clear();
   digitalWrite(MCAL_LED_EN_PIN, HIGH);
-  led_handle.show();
+  Update();
 }
 
 /**
@@ -62,7 +62,7 @@ void NeoMatrix::ShowTime(uint8_t hour, uint8_t minute)
 {
   bool rand = random(0,1);
 
-  led_handle.clear();
+  Clear();
   DrawWord("ES");
   DrawWord("IST");
 
@@ -176,7 +176,8 @@ void NeoMatrix::ShowTime(uint8_t hour, uint8_t minute)
   }
 
     DrawWord("UHR");
-    led_handle.show();
+  
+  Update();
 }
 
 /**
@@ -209,14 +210,10 @@ void NeoMatrix::DrawWord(const String s)
   firstPixel = LED_Text[listelement].FirstPixel;
   lastPixel = (LED_Text[listelement].FirstPixel + LED_Text[listelement].Text.length());
 
-  Serial.print("listEl; "); Serial.println(listelement);
-  Serial.print("firstPix; "); Serial.println(firstPixel);
-  Serial.print("LastPix; "); Serial.println(lastPixel);
-
   // Set corresponding LED pixels
   for(uint8_t i=firstPixel; i<lastPixel; i++)
   {
-    led_handle.setPixelColor(i, Color);
+    SetPixelColor(i, Color);
   }
 }
 
@@ -228,7 +225,7 @@ void NeoMatrix::SetMinute(uint8_t min)
 {
   if(min < 5 && min != 0)
   {
-    led_handle.setPixelColor((COLUMNS * ROWs) + min, Color);
+      SetPixelColor((COLUMNS * ROWs) + min, Color);
   }
 }
 
@@ -277,5 +274,73 @@ String NeoMatrix::NumToString(const uint8_t num)
  */
 void NeoMatrix::SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) 
 {
-	led_handle.setPixelColor(n, (brightness*r/255) , (brightness*g/255), (brightness*b/255));
+	  SetPixelColor(n, (brightness*r/255) , (brightness*g/255), (brightness*b/255));
+}
+
+
+/**
+ * @brief Set LED on XY-Coordinate
+ * 
+ * @param x Matrix X-Position
+ * @param y Matrix Y-Position
+ * @param color LED color
+ */
+void NeoMatrix::SetLedXY(uint8_t x, uint8_t y, uint32_t color)
+{
+  uint16_t i;
+  
+  if(kMatrixSerpentineLayout == false) 
+  {
+    if (kMatrixVertical == false) 
+    {
+      i = (y * COLUMNS) + x;
+    } 
+    else 
+    {
+      i = ROWs * (COLUMNS - (x+1))+y;
+    }
+  }
+
+  if( kMatrixSerpentineLayout == true) 
+  {
+    if (kMatrixVertical == false) 
+    {
+      if(y & 0x01) 
+      {
+        // Odd rows run backwards
+        uint8_t reverseX = (COLUMNS - 1) - x;
+        i = (y * COLUMNS) + reverseX;
+      } 
+      else 
+      {
+        // Even rows run forwards
+        i = (y * COLUMNS) + x;
+      }
+    } 
+    // vertical positioning
+    else 
+    { 
+      if (x & 0x01) 
+      {
+        i = ROWs * (COLUMNS - (x+1))+y;
+      } 
+      else 
+      {
+        i = ROWs * (COLUMNS - x) - (y+1);
+      }
+    }
+  }
+ 
+  SetPixelColor(i, color);
+}
+
+/**
+ * @brief Set single LED
+ * 
+ * @param i LED number
+ * @param color LED Color
+ */
+void NeoMatrix::SetLed(uint8_t i, uint32_t color)
+{
+    SetPixelColor(i, color);
 }
