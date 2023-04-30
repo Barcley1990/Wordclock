@@ -44,13 +44,14 @@ typedef enum NetworkMode
 //Static variables
 const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
 const char*           NTP_Server = "pool.ntp.org";
+const char* mdns_name = "Wordclock";
 const long            GTM_Offset_Sec = 3600; // +1h
 const int             DayLight_Offset_Sec = 3600; // +0h winter time
 //ESP8266WebServer      Server(80);
 NetworkModeType Wifi_Mode = Network_Offline;
 ESP8266WebServer Server(80);
 #ifdef USEOTA
-ESP8266HTTPUpdateServer httpUpdater;
+ESP8266HTTPUpdateServer OTAServer;
 #endif
 
 /***********************************************************************************************************************
@@ -91,25 +92,34 @@ void Wifi_Setup()
   } 
   else 
   {
+    // Successful connected to local wifi...
     Serial.println("connected...");
 
+    // Configure html server
+    Server.onNotFound(handleNotFound);
     Server.on("/", handleRoot);
-    // handler for the /update form page
     Server.on("/update", HTTP_GET, [&](){
       Server.sendHeader(F("Content-Encoding"), F("gzip"));
       Server.send_P(200, "text/html", (const char*)index_color_html_gz, (int)index_color_html_gz_len);
     });
-    Server.onNotFound(handleNotFound);
+    
+    // Setup OTA server using HTML server
 #ifdef USEOTA
-    httpUpdater.setup(&Server);
+    OTAServer.setup(&Server);
 #endif
+
+    // Starting HTML server
     Server.begin();
     Serial.print("HTTP server started on port 80: ");
     Serial.println(WiFi.localIP());
-#ifdef USEOTA
-    MDNS.begin("WordClock_Webupdate");
+    if (MDNS.begin(mdns_name)) {
+      Serial.println("DNS gestartet, erreichbar unter: ");
+      Serial.println("http://" + String(mdns_name) + ".local/");
+    }
     MDNS.addService("http", "tcp", 80);
-    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", "WordClock_Webupdate");
+
+#ifdef USEOTA  
+    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
 #endif
     Wifi_Mode = Network_ServerMode;
   }
