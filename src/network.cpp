@@ -15,17 +15,18 @@
 #include "network.h"
 #include "network_cbk.h"
 #include "mcal.h"
+#include "version.h"
 #include "html/root.h"
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
+#include <ESP8266mDNS.h>
 #include <WiFiManager.h>  
-
+#include <WebSocketsServer.h>
 #ifdef USEOTA
 #include "html/OTAWeb.h"
 #include <LittleFS.h>
-#include <ESP8266mDNS.h>
 #include <ESP8266HTTPUpdateServer.h>
 #endif
 
@@ -50,6 +51,7 @@ const int             DayLight_Offset_Sec = 3600; // +0h winter time
 //ESP8266WebServer      Server(80);
 NetworkModeType Wifi_Mode = Network_Offline;
 ESP8266WebServer Server(80);
+WebSocketsServer ws = WebSocketsServer(81);
 #ifdef USEOTA
 ESP8266HTTPUpdateServer OTAServer;
 #endif
@@ -62,6 +64,7 @@ void handleNotFound();
 #ifdef USEOTA
 void OTA_Init();
 #endif
+void WiFiSettingsChanged();
 
 /***********************************************************************************************************************
  * Function definitions
@@ -74,8 +77,17 @@ void OTA_Init();
 void Wifi_Setup()
 {
   bool retVal;
+  // Set your Static IP address
+  IPAddress local_IP(192, 168, 178, 90);
+  IPAddress gateway(192, 168, 178, 1);
+  IPAddress subnet(255, 255, 255, 255);
 
   WiFiManager wifiManager;
+  wifiManager.setSTAStaticIPConfig(local_IP, gateway, subnet);
+  wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
+  wifiManager.setConnectTimeout(30);
+  wifiManager.setTimeout(30);
+  wifiManager.setSaveConfigCallback(&WiFiSettingsChanged);
 
   //reset settings - wipe credentials for testing
   //wm.resetSettings();
@@ -86,14 +98,13 @@ void Wifi_Setup()
   retVal = wifiManager.autoConnect("ESP8266_Wordclock");
   if(!retVal) 
   {
-    Serial.println("Failed to connect");
+    Serial.println("Failed to connect!");
     // ESP.restart();
-    while(1){;} 
   } 
   else 
   {
     // Successful connected to local wifi...
-    Serial.println("connected...");
+    Serial.println("connected!");
 
     // Configure html server
     Server.onNotFound(handleNotFound);
@@ -103,6 +114,30 @@ void Wifi_Setup()
       Server.send_P(200, "text/html", (const char*)index_color_html_gz, (int)index_color_html_gz_len);
     });
     
+    ws.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
+      String text;
+      switch (type)
+      {
+      case WStype_DISCONNECTED:
+        Serial.println("Client Disconnected");
+        break;
+      case WStype_CONNECTED:
+        Serial.println("Client Connected");
+        break;
+      case WStype_TEXT:
+        
+        for(uint8_t i=0; i<length; i++)
+        {
+          text += (char)payload[i];
+        }
+        if(text=="btn_reset")
+          ESP.restart();
+        break;
+      default:
+        break;
+      }
+    });
+
     // Setup OTA server using HTML server
 #ifdef USEOTA
     OTAServer.setup(&Server);
@@ -110,10 +145,11 @@ void Wifi_Setup()
 
     // Starting HTML server
     Server.begin();
+    ws.begin();
     Serial.print("HTTP server started on port 80: ");
     Serial.println(WiFi.localIP());
     if (MDNS.begin(mdns_name)) {
-      Serial.println("DNS gestartet, erreichbar unter: ");
+      Serial.print("DNS started: ");
       Serial.println("http://" + String(mdns_name) + ".local/");
     }
     MDNS.addService("http", "tcp", 80);
@@ -154,11 +190,11 @@ void Wifi_Get_NtpTime(struct tm* timeinfo)
  */
 void handleRoot() 
 {
-  Server.send(200, "text/plain", "hello from esp8266!");
+  String s = index_html;
+  Server.send(200, "text/html", s);
 
   // tell if a client has connected
-  String addy = Server.client().remoteIP().toString();
-  Serial.println("Client connected on: " + addy);
+  Serial.println("Client connected on: " + Server.client().remoteIP().toString());
 }
 
 /**
@@ -206,6 +242,11 @@ bool loadFromFS(String path, String dataType) {
   return true;
 }
 
+void WiFiSettingsChanged()
+{
+  Serial.println("WiIi Settings have been changed!");
+}
+
 /**
  * @brief Execute http server handle
  * 
@@ -215,8 +256,8 @@ void Wifi_ServerExec()
   if(Wifi_Mode != Network_Offline)
   {
     Server.handleClient();
-    #ifdef USEOTA
-      MDNS.update();
-    #endif
+    ws.loop();
+    MDNS.update();
+
   }
 }

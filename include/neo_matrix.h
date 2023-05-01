@@ -80,7 +80,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 class NeoMatrix 
 {
 private:
-    Adafruit_NeoPixel* led_handle = NULL;
+    Adafruit_NeoPixel led_handle = Adafruit_NeoPixel(WS2812_MAX_LEDS, WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800);
     const bool kMatrixSerpentineLayout = MATRIX_SERPENTINELAYOUT;
     const bool kMatrixVertical = MATRIX_VERTIACAL;
     typedef struct WordClock_Text_DE
@@ -118,46 +118,29 @@ private:
     void SetMinute(uint8_t min);
     String NumToString(const uint8_t num);
     void SetColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness) ;
-    void SetPixelColor(uint16_t n, uint32_t c) {
-        if(led_handle != NULL)
-            led_handle->setPixelColor(n, c);
-        else
-            Serial.print("Error");
-    }
-    void SetPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
-        if(led_handle != NULL)
-            led_handle->setPixelColor(n, r, g, b);
-        else
-            Serial.print("Error");
-    }
-    void Update() {
-        if(led_handle != NULL)
-            led_handle->show();
-        else
-            Serial.print("Error");
-    }
-    void Clear() {
-        if(led_handle != NULL)
-            led_handle->clear();
-        else
-            Serial.print("Error");
-    }
+    
     
 public:
     NeoMatrix() {
-        pinMode(MCAL_LED_EN_PIN, OUTPUT);
-        led_handle = new Adafruit_NeoPixel(WS2812_MAX_LEDS, WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800); 
-        led_handle->begin();
-        led_handle->clear();
-        led_handle->show();
-        led_handle->setBrightness(map(40, 0, 255, 0, 100));
-        Color = led_handle->Color(20, 20, 20);
+        
     }
     ~NeoMatrix()
     {
         PowerOff();
     };
 
+    void Init() {
+        Serial.println("Start NeoMatrix");
+        pinMode(MCAL_LED_EN_PIN, OUTPUT);
+        PowerOn();
+        delay(100);
+        Color = led_handle.Color(255, 255, 255);
+        led_handle.begin();
+        led_handle.clear();
+        led_handle.show();
+        led_handle.setBrightness(map(20, 0, 255, 0, 100));
+        
+    }
     void PowerOn();
     void PowerOff();
     void StartupLEDsTest(void);
@@ -166,6 +149,19 @@ public:
     
     void SetLedXY(uint8_t x, uint8_t y, uint32_t color);
     void SetLed(uint8_t i, uint32_t color);
+    void SetPixelColor(uint16_t n, uint32_t c) {
+        led_handle.setPixelColor(n, c);
+    }
+    
+    void SetPixelColor(uint16_t n, uint8_t r, uint8_t g, uint8_t b) {
+        led_handle.setPixelColor(n, r, g, b);
+    }
+    void Update() {
+        led_handle.show();
+    }
+    void Clear() {
+        led_handle.clear();
+    }
 
 };
 

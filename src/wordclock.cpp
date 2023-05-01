@@ -22,6 +22,7 @@
  * Include area
  ***********************************************************************************************************************/
 #include "wordclock.h"
+#include "version.h"
 #include "mcal.h"
 #include "rtc.h"
 #include "network.h"
@@ -46,7 +47,7 @@
  ***********************************************************************************************************************/
 BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
 static bool Wordclock_BH1750_Intitialised = false;
-NeoMatrix WordClock = NeoMatrix();
+NeoMatrix WordClock;
 
 /***********************************************************************************************************************
  * Function declarations
@@ -107,6 +108,9 @@ void WordClock_Init()
     {
         Serial.println("Light meassurement failed");
     }
+
+    WordClock.Init();
+
 }
 
 /**
@@ -115,8 +119,9 @@ void WordClock_Init()
  */
 void WordClock_Runnable_1s()
 {   
-
-#ifdef DEBUG_MODE
+    static uint8_t cnt = 0;
+    uint8_t hour, minute;
+#ifndef DEBUG_MODE
     static uint8_t temp_h, temp_min;
     if(temp_h != DEBUG_HOUR || temp_min != DEBUG_MINUTE)
     {
@@ -130,8 +135,13 @@ void WordClock_Runnable_1s()
     }
     
 #else
-    RtcDateTime now = Rtc.GetDateTime();
-    LED_ShowTime(WORDCLOCK_12H_FORMAT(now.Hour()), now.Minute(), now.Second());
+    cnt++;
+    if(cnt%10 == 0)
+    {
+        Rtc_GetTime(&hour, &minute);
+        WordClock.ShowTime(WORDCLOCK_12H_FORMAT(hour), minute);
+    }
+    
 #endif
 }
 

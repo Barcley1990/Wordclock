@@ -23,8 +23,7 @@
  * Global function declarations
  ***********************************************************************************************************************/
 void Rtc_Setup(struct tm* timeinfo);
-void Rtc_GetTime();
 void Rtc_SetTime();
-
+void Rtc_GetTime(uint8_t *hour, uint8_t *minute);
 
 #endif

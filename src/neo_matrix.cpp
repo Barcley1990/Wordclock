@@ -225,7 +225,8 @@ void NeoMatrix::SetMinute(uint8_t min)
 {
   if(min < 5 && min != 0)
   {
-      SetPixelColor((COLUMNS * ROWs) + min, Color);
+    for(uint8_t i=min; i>=1; i--)
+      SetPixelColor((COLUMNS * ROWs) + i, Color);
   }
 }
 

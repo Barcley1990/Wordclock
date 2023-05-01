@@ -99,6 +99,16 @@ void Rtc_Setup(struct tm* timeinfo)
     }
 }
 
+void Rtc_GetTime(uint8_t *hour, uint8_t *minute)
+{
+    RtcDateTime now = Rtc.GetDateTime();
+    Serial.print("RTC time is: ");
+    printDateTime(now);
+
+    *hour = now.Hour();
+    *minute = now.Minute();
+}
+
 /**
  * @brief printDateTime
  * 

@@ -1,25 +1,60 @@
+#include "version.h"
 
-const char* PARAM_INPUT_1 = "input_ssid";
-const char* PARAM_INPUT_2 = "input_password";
+const char index_html[] PROGMEM = R"=====(
+<HTML>
+	<HEAD>
+		<TITLE>Wordclock</TITLE>
+        <h1>Wordclock</h1>
+        <style>
+		footer {
+		  text-align: center;
+		  padding: 3px;
+		  background-color: DarkSalmon;
+		  color: white;
+		}
+		</style>
+	</HEAD>
+<BODY style='background-color: #EEEEEE;'>
+	<CENTER>
+		<B>Hello World.... </B>
+		<span id='test'>-</span>
+		<p><button type='button' id='BTN_RESET_ESP'>
+			Reset ESP
+		</button></p>
 
-const char index_html[] = R"rawliteral(
-<!DOCTYPE HTML><html>
-    <head>
-        <title>Wordclock</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <style>\
-            body { background-color: #cccccc; font-family: Arial, Helvetica, Sans-Serif; font-size: 1.5em; Color: #000000; }
-            h1 { Color: #AA0000; }
-        </style>\
-    </head>
-    <body>
-        <form action="/get">
-            input_ssid: <input type="text" name="input_ssid">
-            <input type="submit" value="Submit">
-        </form><br>
-        <form action="/get">
-            input_password: <input type="text" name="input_password">
-            <input type="submit" value="Submit">
-        </form><br>
-    </body>
-</html>)rawliteral";
+	</CENTER>	
+</BODY>
+
+<footer>
+  <a href="/update">Software Update</a>
+  <p>Author: Tobias Nuss</p>
+  <p>Software Version: 0.1.0</p>
+</footer>
+
+<script>
+	var Socket;
+
+	document.getElementById('BTN_RESET_ESP').addEventListener('click', button_reset_esp);
+
+	function init() {
+		Socket = new WebSocket('ws://' + window.location.hostname + ':81/');
+		Socket.onmessage = function(event) {
+			processCommand(event);
+		};
+	}
+
+	function processCommand(event) {
+		document.getElementById('test').innerHTML = event.data;
+		console.log(event);
+	}
+
+	function button_reset_esp() {
+		Socket.send('btn_reset');
+	}
+
+	window.onload = function(event) {
+		init();
+	}
+</script>
+</HTML>
+)=====";
