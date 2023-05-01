@@ -35,6 +35,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
+#define MATRIX_ROTATION         (2u) //0=0° 1=90° 2=180° 3=270°
 // Set 'kMatrixSerpentineLayout' to false if your pixels are 
 // laid out all running the same way, like this:
 //
@@ -83,6 +84,7 @@ private:
     Adafruit_NeoPixel led_handle = Adafruit_NeoPixel(WS2812_MAX_LEDS, WS2812_DATA_PIN, NEO_GRB + NEO_KHZ800);
     const bool kMatrixSerpentineLayout = MATRIX_SERPENTINELAYOUT;
     const bool kMatrixVertical = MATRIX_VERTIACAL;
+    const uint8_t kMatrixRotation = MATRIX_ROTATION;
     typedef struct WordClock_Text_DE
     {
         String Text;
@@ -102,7 +104,7 @@ private:
             {"ZWEI",    62,}, //<--
             {"DREI",    67,}, //-->
             {"VIER",    77,}, //<--
-            {"FÜNF",    73,}, //-->
+            {"FÜNF",    72,}, //-->
             {"SECHS",   104}, //<--
             {"SIEBEN",  55,}, //<--
             {"ACHT",    89,}, //-->
