@@ -140,14 +140,14 @@ public:
         led_handle.begin();
         led_handle.clear();
         led_handle.show();
-        led_handle.setBrightness(map(20, 0, 255, 0, 100));
-        
+        led_handle.setBrightness(map(100, 0, 255, 0, 100));
     }
     void PowerOn();
     void PowerOff();
     void StartupLEDsTest(void);
     void ShowTime(uint8_t hour, uint8_t minute);
     void SetColor(uint32_t c);
+    uint32_t GetColor();
     
     void SetLedXY(uint8_t x, uint8_t y, uint32_t color);
     void SetLed(uint8_t i, uint32_t color);

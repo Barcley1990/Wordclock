@@ -32,6 +32,6 @@ extern uint8_t DEBUG_MINUTE;
  ***********************************************************************************************************************/
 extern void WordClock_Init();
 extern void WordClock_Runnable_1s();
-
+void changeColor(uint8_t r, uint8_t g, uint8_t b);
 
 #endif

@@ -46,7 +46,6 @@
  * Private Variables
  ***********************************************************************************************************************/
 BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
-static bool Wordclock_BH1750_Intitialised = false;
 NeoMatrix WordClock;
 
 /***********************************************************************************************************************
@@ -89,24 +88,8 @@ void WordClock_Init()
     Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
     if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
         Serial.println(F("Initialise BH1750"));
-        Wordclock_BH1750_Intitialised = true;
     } else {
         Serial.println(F("Error initialising BH1750"));
-    }
-
-    // Print Lux
-    delay(500);
-    if ((Wordclock_BH1750_Intitialised == true) && 
-        (lightMeter.measurementReady() == true)) 
-    {
-        float lux = lightMeter.readLightLevel();
-        Serial.print("Light: ");
-        Serial.print(lux);
-        Serial.println(" lx");
-    }
-    else
-    {
-        Serial.println("Light meassurement failed");
     }
 
     WordClock.Init();
@@ -140,9 +123,28 @@ void WordClock_Runnable_1s()
     {
         Rtc_GetTime(&hour, &minute);
         WordClock.ShowTime(WORDCLOCK_12H_FORMAT(hour), minute);
+        Wifi_WebSocketBroadCast("Time", String(hour) + "." + String(minute));     
+    }
+    if (lightMeter.measurementReady() == true)
+    {
+        float lux = lightMeter.readLightLevel();
+        Serial.print("Light: ");
+        Serial.print(lux);
+        Serial.println(" lx");
+        Wifi_WebSocketBroadCast("Light", String(lux));
+    }
+    else
+    {
+        Serial.println("Light meassurement failed");
     }
     
 #endif
+}
+
+void changeColor(uint8_t r, uint8_t g, uint8_t b)
+{
+    uint32_t c = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
+    WordClock.SetColor(c);
 }
 
 //===============================================

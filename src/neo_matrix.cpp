@@ -345,3 +345,13 @@ void NeoMatrix::SetLed(uint8_t i, uint32_t color)
 {
     SetPixelColor(i, color);
 }
+
+void NeoMatrix::SetColor(uint32_t c) 
+{
+  Color = c;
+}
+
+uint32_t NeoMatrix::GetColor()
+{
+  return Color;
+}

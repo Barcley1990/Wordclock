@@ -15,8 +15,10 @@
 #include "network.h"
 #include "network_cbk.h"
 #include "mcal.h"
+#include "wordclock.h"
 #include "version.h"
 #include "html/root.h"
+#include "html/style.h"
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -24,6 +26,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiManager.h>  
 #include <WebSocketsServer.h>
+#include <Arduino_JSON.h>
 #ifdef USEOTA
 #include "html/OTAWeb.h"
 #include <LittleFS.h>
@@ -43,9 +46,8 @@ typedef enum NetworkMode
 }NetworkModeType;
 
 //Static variables
-const char* modes[] = { "NULL", "STA", "AP", "STA+AP" };
 const char*           NTP_Server = "pool.ntp.org";
-const char* mdns_name = "Wordclock";
+const char*           mdns_name = "Wordclock";
 const long            GTM_Offset_Sec = 3600; // +1h
 const int             DayLight_Offset_Sec = 3600; // +0h winter time
 //ESP8266WebServer      Server(80);
@@ -59,12 +61,10 @@ ESP8266HTTPUpdateServer OTAServer;
 /***********************************************************************************************************************
  * Local function declarations
  ***********************************************************************************************************************/
-void handleRoot();
+void handleIndexHtml();
+void handleCSS();
 void handleNotFound();
-#ifdef USEOTA
-void OTA_Init();
-#endif
-void WiFiSettingsChanged();
+void Wifi_WebSocketReceive(uint8_t* payload, size_t length);
 
 /***********************************************************************************************************************
  * Function definitions
@@ -77,7 +77,7 @@ void WiFiSettingsChanged();
 void Wifi_Setup()
 {
   bool retVal;
-  // Set your Static IP address
+  // Set Static IP address
   IPAddress local_IP(192, 168, 178, 90);
   IPAddress gateway(192, 168, 178, 1);
   IPAddress subnet(255, 255, 255, 255);
@@ -87,7 +87,9 @@ void Wifi_Setup()
   wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
   wifiManager.setConnectTimeout(30);
   wifiManager.setTimeout(30);
-  wifiManager.setSaveConfigCallback(&WiFiSettingsChanged);
+  wifiManager.setSaveConfigCallback([](){
+    Serial.println("WiIi Settings have been changed!");
+  });
 
   //reset settings - wipe credentials for testing
   //wm.resetSettings();
@@ -108,14 +110,18 @@ void Wifi_Setup()
 
     // Configure html server
     Server.onNotFound(handleNotFound);
-    Server.on("/", handleRoot);
+    Server.on("/", handleIndexHtml);
+    Server.on("/style.css", handleCSS);
     Server.on("/update", HTTP_GET, [&](){
+      digitalWrite(MCAL_LED_EN_PIN, LOW);
       Server.sendHeader(F("Content-Encoding"), F("gzip"));
       Server.send_P(200, "text/html", (const char*)index_color_html_gz, (int)index_color_html_gz_len);
     });
     
     ws.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
       String text;
+      JSONVar sliderValues;
+      String jsonString;
       switch (type)
       {
       case WStype_DISCONNECTED:
@@ -123,15 +129,14 @@ void Wifi_Setup()
         break;
       case WStype_CONNECTED:
         Serial.println("Client Connected");
+        sliderValues["sliderValue1"] = String("0");
+        sliderValues["sliderValue2"] = String("0");
+        sliderValues["sliderValue3"] = String("0");
+        jsonString = JSON.stringify(sliderValues);  
+        ws.broadcastTXT(jsonString); 
         break;
       case WStype_TEXT:
-        
-        for(uint8_t i=0; i<length; i++)
-        {
-          text += (char)payload[i];
-        }
-        if(text=="btn_reset")
-          ESP.restart();
+        Wifi_WebSocketReceive(payload, length);
         break;
       default:
         break;
@@ -143,7 +148,7 @@ void Wifi_Setup()
     OTAServer.setup(&Server);
 #endif
 
-    // Starting HTML server
+    // Starting HTML server, websocket server, mDNS server
     Server.begin();
     ws.begin();
     Serial.print("HTTP server started on port 80: ");
@@ -188,13 +193,18 @@ void Wifi_Get_NtpTime(struct tm* timeinfo)
  * @brief Handle for http server
  * 
  */
-void handleRoot() 
+void handleIndexHtml() 
 {
   String s = index_html;
   Server.send(200, "text/html", s);
-
-  // tell if a client has connected
   Serial.println("Client connected on: " + Server.client().remoteIP().toString());
+}
+
+void handleCSS()
+{
+  String css = style_css;
+  Server.send(200, "text/css", css);
+  Serial.println("CSS Loaded");
 }
 
 /**
@@ -216,6 +226,8 @@ void handleNotFound()
   }
   Server.send(404, "text/plain", message);
 }
+
+
 
 //===============================================
 bool loadFromFS(String path, String dataType) {
@@ -242,9 +254,57 @@ bool loadFromFS(String path, String dataType) {
   return true;
 }
 
-void WiFiSettingsChanged()
+/**
+ * @brief Websocket broadcast in JSON format
+ * 
+ * @param key 
+ * @param data 
+ */
+void Wifi_WebSocketBroadCast(String key, String data)
 {
-  Serial.println("WiIi Settings have been changed!");
+  JSONVar objects;
+  String jsonString;
+
+  objects[key] = data;
+  jsonString = JSON.stringify(objects);
+
+  ws.broadcastTXT(jsonString);
+}
+
+/**
+ * @brief 
+ * 
+ * @param payload 
+ * @param length 
+ */
+void Wifi_WebSocketReceive(uint8_t* payload, size_t length)
+{
+  uint8_t pinstate = !digitalRead(MCAL_LED_EN_PIN);
+  String data;
+
+  for(uint8_t i=0; i<length; i++)
+    data += *(char*)payload++;
+
+  if(data=="#esp_reset")
+    ESP.restart();
+  else if(data=="#pwr_on_off") {
+    Serial.println("Switch LED Power");
+    digitalWrite(MCAL_LED_EN_PIN, pinstate);
+  }
+  else if(data.substring(0,2) == "1s") {
+    uint8_t val = data.substring(2).toInt();
+    changeColor(val,0,0);
+  }
+  else if(data.substring(0,2) == "3s") {
+    uint8_t val = data.substring(2).toInt();
+    changeColor(0,val,0);
+  }
+  else if(data.substring(0,2) == "2s") {
+    uint8_t val = data.substring(2).toInt();
+    changeColor(0,0,val);
+  }
+  else
+    Serial.println(data);
 }
 
 /**
