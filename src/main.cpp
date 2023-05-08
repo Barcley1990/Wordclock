@@ -13,35 +13,45 @@
 /***********************************************************************************************************************
  * Include Area
  ***********************************************************************************************************************/
-#
-#include <Arduino.h>
-#include "wordclock.h"
-#include "network.h"
+#include "ascii.h"
 #include "mcal.h"
+#include "version.h"
+#include "wordclock.h"
 
-#define OS_1MS_EVENT    1
-#define OS_10MS_EVENT   10
-#define OS_100MS_EVENT  100
-#define OS_1000MS_EVENT 1000
-#define SERIAL_BUFF_SIZE 100
+#include <ESP8266WiFi.h>
+#include <ESP8266WebServer.h>
+#include <DNSServer.h>
+#include <ESP8266mDNS.h>
+#include <WiFiManager.h>  
+#include <WebSocketsServer.h>
+#include <ESP8266HTTPUpdateServer.h>
+#include <LittleFS.h>
+#include <Arduino_JSON.h>
+
 
 /***********************************************************************************************************************
  * Private Variables
  ***********************************************************************************************************************/
-#ifdef DEBUG_MODE
-  uint8_t DEBUG_HOUR = 0;
-  uint8_t DEBUG_MINUTE = 0;
-#endif
-static uint16_t Os_SysTimerCnt;
-static uint16_t WiFiEnDebounceCounterHi;
-static uint16_t WiFiEnDebounceCounterLo;
-static String Serial_Buffer;
+static bool WiFi_Setup_Successful = false;
+static uint32_t old_time_100 = 0u;
+
+const char* mdns_name = "Wordclock";
+
+IPAddress local_IP(192, 168, 178, 90);
+IPAddress gateway(192, 168, 178, 1);
+IPAddress subnet(255, 255, 255, 255);
+ESP8266WebServer HtmlServer(80);
+WebSocketsServer WebSocketServer = WebSocketsServer(81);
+ESP8266HTTPUpdateServer OTAServer;
+Wordclock wordclock;
 
 /***********************************************************************************************************************
  * Local function declarations
  ***********************************************************************************************************************/
-bool gpio_debounce(uint16_t* debCnt, const uint16_t debTime);
-
+void Runnable_100_ms();
+void WebSocketReceive(uint8_t* payload, uint8_t length);
+bool Debounce(uint16_t* debCnt, const uint16_t debTime);
+String GetVersion();
 
 /***********************************************************************************************************************
  * Function definitions
@@ -51,23 +61,116 @@ bool gpio_debounce(uint16_t* debCnt, const uint16_t debTime);
 */
 void setup() 
 {
-  Os_SysTimerCnt = 0u;
-
   // Initialize GPIOs
   pinMode(MCAL_WIFI_EN_PIN, INPUT);
   pinMode(MCAL_BOOT_PIN, INPUT);
   pinMode(MCAL_LED_EN_PIN, OUTPUT);
   digitalWrite(MCAL_LED_EN_PIN, LOW);
 
-  // Check for debugging mode
-#ifdef DEBUG_MODE
+  // Start serial inteface
   Serial.begin(115200);
   delay(100);
-  static String SerialBuffer;
-#endif
 
-  // Initialize wordclock
-  WordClock_Init();
+  // Print software version
+  Serial.println("");
+  Serial.println("");
+  Serial.println(header);
+  Serial.print("\nVersion: ");
+  Serial.println(GetVersion());
+  Serial.println("");
+  Serial.println("");
+  delay(100);
+
+  // Initialize LittleFS
+  Serial.print("Try to initialize LittleFS ");
+  //LittleFS.format();
+  if (!LittleFS.begin())
+  {
+    Serial.println("->An error has occurred while mounting LittleFS. End Setup!");
+    return;
+  }
+  else
+  {
+    Serial.println("->LittleFS mounted successfully");
+  }
+
+  // Setup Wifi manager
+  WiFiManager wifiManager;
+  //wifiManager.setSTAStaticIPConfig(local_IP, gateway, subnet);
+  //wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
+  wifiManager.setConnectTimeout(5);
+  wifiManager.setSaveConfigCallback([](){
+    Serial.println("WiIi Settings have been changed!");
+  });
+
+  // Automatically connect using saved credentials,
+  // if connection fails, it starts an access point with the specified name,
+  // then goes into a blocking loop awaiting configuration and will return success result
+  if(!wifiManager.autoConnect("ESP8266_Wordclock")) 
+  {
+    Serial.println("Failed to connect!");
+    return;
+  } 
+  else 
+  {
+    // Successful connected to local wifi...
+    Serial.print("Successfully connected! IP is: ");
+    Serial.println(WiFi.localIP());
+
+    // Configure html server
+    HtmlServer.onNotFound([](){
+        String message = "File Not Found\n\n";
+        message += "URI: ";
+        message += HtmlServer.uri();
+        message += "\nMethod: ";
+        message += (HtmlServer.method() == HTTP_GET) ? "GET" : "POST";
+        message += "\nArguments: ";
+        message += HtmlServer.args();
+        message += "\n";
+        for (uint8_t i = 0; i < HtmlServer.args(); i++) {
+          message += " " + HtmlServer.argName(i) + ": " + HtmlServer.arg(i) + "\n";
+        }
+        HtmlServer.send(404, "text/plain", message);
+    });
+    HtmlServer.serveStatic("/", LittleFS, "/index.html");
+    HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
+    HtmlServer.serveStatic("/update", LittleFS, "/index_color.html");
+
+    // Configure WebSocket Server
+    WebSocketServer.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
+      String text;
+      JSONVar sliderValues;
+      String jsonString;
+      switch (type)
+      {
+      case WStype_DISCONNECTED:
+        Serial.println("Client Disconnected");
+        break;
+      case WStype_CONNECTED:
+        Serial.println("Client Connected");
+        break;
+      case WStype_TEXT:
+        WebSocketReceive(payload, length);
+        break;
+      default:
+        break;
+      }
+    });
+
+    // Initialize servers (HTML, WS, OTA, mDNS)
+    OTAServer.setup(&HtmlServer);
+    HtmlServer.begin();
+    WebSocketServer.begin();
+    if (MDNS.begin(mdns_name)) {
+      Serial.print("DNS started: ");
+      Serial.println("http://" + String(mdns_name) + ".local/");
+    }
+    MDNS.addService("http", "tcp", 80);
+
+    Serial.print("HTTP server started on port 80: ");
+    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
+  }
+  WiFi_Setup_Successful = true;
 }
 
 /**
@@ -76,101 +179,40 @@ void setup()
 void loop() 
 {
   uint32_t sys_time = millis();
-  static uint32_t old_time_1000 = 0u;
-  static uint32_t old_time_100 = 0u;
-  static uint32_t old_time_10 = 0u;
-  static uint16_t boot_pin_state_cnt = 0;
-  static bool wifi_pin_state_flag_Hi = false;
-  static bool wifi_pin_state_flag_Lo = false;
-
-  // check if 1000ms passed
-  if (sys_time - old_time_1000 >= OS_1000MS_EVENT) {    
-    old_time_1000 = sys_time;
-    WordClock_Runnable_1s();
-  }
 
   // check if 100ms passed
-  if (sys_time - old_time_100 >= OS_100MS_EVENT) {    
+  if ((uint32_t)(sys_time - old_time_100) >= 100u) {    
     old_time_100 = sys_time;
+    Runnable_100_ms();
   }
 
-  // check if 10ms passed
-  if (sys_time - old_time_10 >= OS_10MS_EVENT) {   
-    old_time_10 = sys_time;
-    // poll Boot-Pin
-    if(digitalRead(MCAL_BOOT_PIN) == false)
-    {
-      boot_pin_state_cnt++;
-      // Reboot after 5s
-      if(boot_pin_state_cnt >= 500u)
-      {
-        Serial.println("Rebooting...");
-        digitalWrite(MCAL_LED_EN_PIN, LOW);
-        delay(100);
-        ESP.rebootIntoUartDownloadMode();
-      }
-    }
-    // Reset counter to debounce
-    else
-    {
-      boot_pin_state_cnt = 0u;
-    }
-
-    // poll WifiEn-Pin 
-    // HIGH
-    if(digitalRead(MCAL_WIFI_EN_PIN))
-    {
-      WiFiEnDebounceCounterLo = 0u;
-      wifi_pin_state_flag_Lo = false;
-      if(wifi_pin_state_flag_Hi == false && gpio_debounce(&WiFiEnDebounceCounterHi, 4u))
-      {
-        Serial.println("WiFi EN Pin is HIGH");
-        wifi_pin_state_flag_Hi = true;
-      }
-    }
-    else
-    {
-      WiFiEnDebounceCounterHi = 0u;
-      wifi_pin_state_flag_Hi = false;
-      if(wifi_pin_state_flag_Lo == false && gpio_debounce(&WiFiEnDebounceCounterLo, 4u))
-      {
-        Serial.println("WiFi EN Pin is LOW");
-        wifi_pin_state_flag_Lo = true;
-      }
-    }
-  }
-
-  // Execute Server Handle
-  Wifi_ServerExec();
-
-
-#ifdef DEBUG_MODE
-  static int temp_int1 = 0u;
-  static int temp_int2 = 0u;
-  // if there's any serial available, read it (max. 2s):
-  if(Serial.available() && temp_int1 == 0){
-      String SerialData = Serial.readString();
-      temp_int1 = atol(SerialData.c_str());
-      Serial.println(temp_int1);
-  }
-  if(Serial.available() && temp_int1 != 0){
-      String SerialData2 = Serial.readString();
-      temp_int2 = atol(SerialData2.c_str());
-      Serial.println(temp_int2);
-  }
-  
-  if(temp_int1 != 0 && temp_int2 != 0)
+  // Execute Server
+  if(WiFi_Setup_Successful == true)
   {
-    DEBUG_HOUR = temp_int1;
-    DEBUG_MINUTE = temp_int2;
-    temp_int1 = 0;
-    temp_int2 = 0;
-    Serial_Buffer.clear();
+    HtmlServer.handleClient();
+    WebSocketServer.loop();
+    MDNS.update();
   }
-  
+}
 
-  
-#endif
+/**
+ * @brief called every 10ms
+ * 
+ */
+void Runnable_100_ms()
+{
+  wordclock.rainbow(0, 10);
+  wordclock.show();
+}
+
+/**
+ * @brief 
+ * 
+ * @param payload 
+ * @param length 
+ */
+void WebSocketReceive(uint8_t *payload, uint8_t length)
+{
 
 }
 
@@ -182,7 +224,7 @@ void loop()
  * @return true 
  * @return false 
  */
-bool gpio_debounce(uint16_t* debCnt, const uint16_t debTime)
+bool Debounce(uint16_t* debCnt, const uint16_t debTime)
 {
   bool retVal = false;
 
@@ -194,4 +236,17 @@ bool gpio_debounce(uint16_t* debCnt, const uint16_t debTime)
   }
 
   return retVal;
+}
+
+/**
+ * @brief Get the Version object
+ * 
+ * @return String 
+ */
+String GetVersion()
+{
+  return (String)(
+      String(SOFTWARE_VERSION_MAYOR)+ "." + 
+      String(SOFTWARE_VERSION_MINOR)+ "." + 
+      String(SOFTWARE_VERSION_PATCH));
 }

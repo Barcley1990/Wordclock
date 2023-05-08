@@ -1,157 +1,113 @@
 /**
  * @file wordclock.cpp
- * @author Tobias Nuß
+ * @author your name (you@domain.com)
  * @brief 
  * @version 0.1
- * @date 2023-04-07
+ * @date 2023-04-29
  * 
  * @copyright Copyright (c) 2023
  * 
- * Microcontroller ESP8266
- * Module WROOM-02
- * Frequency 80MHz
- * Flash 2MB
- * RAM 80KB
- * Vendor Espressif
- * 
  */
-
-
-
 /***********************************************************************************************************************
  * Include area
  ***********************************************************************************************************************/
 #include "wordclock.h"
-#include "version.h"
-#include "mcal.h"
-#include "rtc.h"
-#include "network.h"
-#include "neo_matrix.h"
-#include "ascii.h"
-#include <BH1750.h>
-#include <Wire.h>
 
-//=================================================
-#define WORDCLOCK_BH1750_ADDR (0x23u)
-#define WORDCLOCK_EEPROM_SIZE (512u)
-#define WORDCLOCK_EEPROM_SSID_ADDR (0x0u);
-#define WORDCLOCK_EEPROM_SSID_SIZE (0x8u);
-#define WORDCLOCK_EEPROM_PWD_ADDR (0x8u);
-#define WORDCLOCK_EEPROM_PWD_SIZE (0x8u);
+#define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
 
-// Function Macros:
-#define WORDCLOCK_12H_FORMAT(h) (((h)>12) ? ((h)-12) : (h))
-
-/***********************************************************************************************************************
- * Private Variables
- ***********************************************************************************************************************/
-BH1750 lightMeter(WORDCLOCK_BH1750_ADDR);
-NeoMatrix WordClock;
-
-/***********************************************************************************************************************
- * Function declarations
- ***********************************************************************************************************************/
-String WordClock_GetVersion();
 
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
-
 /**
- * @brief WordClock_Init
+ * @brief Turn LED power off to safe energy
  * 
  */
-void WordClock_Init()
+void Wordclock::powerOff()
 {
-    // local variable for time data
-    struct tm ntp_time;
-
-    // Print software version
-    Serial.println("");
-    Serial.println("");
-    Serial.println(header);
-    Serial.print("\nVersion: ");
-    Serial.println(WordClock_GetVersion());
-    Serial.println("Start wordclock");
-    delay(100);
-
-    // Setup Wifi
-    Wifi_Setup();
-
-    // Get NTP Server Time
-    Wifi_Get_NtpTime(&ntp_time);
-
-    // Setup RTC
-    Rtc_Setup(&ntp_time);
-
-    // Setup Light Meter
-    Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
-    if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
-        Serial.println(F("Initialise BH1750"));
-    } else {
-        Serial.println(F("Error initialising BH1750"));
-    }
-
-    WordClock.Init();
-
+  digitalWrite(MCAL_LED_EN_PIN, LOW);
+  clear();
 }
 
 /**
- * @brief Called every second
+ * @brief Turn LED power on
  * 
  */
-void WordClock_Runnable_1s()
-{   
-    static uint8_t cnt = 0;
-    uint8_t hour, minute;
-#ifndef DEBUG_MODE
-    static uint8_t temp_h, temp_min;
-    if(temp_h != DEBUG_HOUR || temp_min != DEBUG_MINUTE)
-    {
-        Serial.print("--DEBUG MODE-- Time set to: ");
-        Serial.print(DEBUG_HOUR);
-        Serial.print(":");
-        Serial.println(DEBUG_MINUTE);
-        WordClock.ShowTime(DEBUG_HOUR, DEBUG_MINUTE);
-        temp_h = DEBUG_HOUR;
-        temp_min = DEBUG_MINUTE;
-    }
-    
-#else
-    cnt++;
-    if(cnt%10 == 0)
-    {
-        Rtc_GetTime(&hour, &minute);
-        WordClock.ShowTime(WORDCLOCK_12H_FORMAT(hour), minute);
-        Wifi_WebSocketBroadCast("Time", String(hour) + "." + String(minute));     
-    }
-    if (lightMeter.measurementReady() == true)
-    {
-        float lux = lightMeter.readLightLevel();
-        Serial.print("Light: ");
-        Serial.print(lux);
-        Serial.println(" lx");
-        Wifi_WebSocketBroadCast("Light", String(lux));
-    }
-    else
-    {
-        Serial.println("Light meassurement failed");
-    }
-    
-#endif
+void Wordclock::powerOn()
+{
+  clear();
+  digitalWrite(MCAL_LED_EN_PIN, HIGH);
+  show();
 }
 
-void changeColor(uint8_t r, uint8_t g, uint8_t b)
+/**
+ * @brief Set LED on XY-Coordinate
+ * 
+ * @param x Matrix X-Position
+ * @param y Matrix Y-Position
+ * @param color LED color
+ */
+void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
 {
-    uint32_t c = ((uint32_t)r << 16) | ((uint32_t)g << 8) | b;
-    WordClock.SetColor(c);
+  uint16_t i;
+  
+  if(_matrixSerpentineLayout == false) 
+  {
+    if (_matrixVertical == false) 
+    {
+      i = (y * COLUMNS) + x;
+    } 
+    else 
+    {
+      i = ROWs * (COLUMNS - (x+1))+y;
+    }
+  }
+
+  if( _matrixSerpentineLayout == true) 
+  {
+    if (_matrixVertical == false) 
+    {
+      if(y & 0x01) 
+      {
+        // Odd rows run backwards
+        uint8_t reverseX = (COLUMNS - 1) - x;
+        i = (y * COLUMNS) + reverseX;
+      } 
+      else 
+      {
+        // Even rows run forwards
+        i = (y * COLUMNS) + x;
+      }
+    } 
+    // vertical positioning
+    else 
+    { 
+      if (x & 0x01) 
+      {
+        i = ROWs * (COLUMNS - (x+1))+y;
+      } 
+      else 
+      {
+        i = ROWs * (COLUMNS - x) - (y+1);
+      }
+    }
+  }
+ 
+  setPixelColor(i, c);
 }
 
-//===============================================
-String WordClock_GetVersion()
+void printDateTime(const RtcDateTime& dt)
 {
-    return (String)(
-        String(SOFTWARE_VERSION_MAYOR)+ "." + 
-        String(SOFTWARE_VERSION_MINOR)+ "." + 
-        String(SOFTWARE_VERSION_PATCH));
+    char datestring[20];
+
+    snprintf_P(datestring, 
+            COUNTOF(datestring),
+            PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+            dt.Month(),
+            dt.Day(),
+            dt.Year(),
+            dt.Hour(),
+            dt.Minute(),
+            dt.Second() );
+    Serial.println(datestring);
 }
