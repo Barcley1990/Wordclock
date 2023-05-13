@@ -17,6 +17,7 @@
 #include "mcal.h"
 #include "version.h"
 #include "wordclock.h"
+#include "debounce.h"
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -37,6 +38,14 @@ static uint32_t old_time_100 = 0u;
 
 const char* mdns_name = "Wordclock";
 
+/***********************************************************************************************************************
+ * Local function declarations and objects
+ ***********************************************************************************************************************/
+void Runnable_100_ms();
+void WebSocketReceive(uint8_t* payload, uint8_t length);
+void BootPinCbk();
+String GetVersion();
+
 IPAddress local_IP(192, 168, 178, 90);
 IPAddress gateway(192, 168, 178, 1);
 IPAddress subnet(255, 255, 255, 255);
@@ -44,14 +53,7 @@ ESP8266WebServer HtmlServer(80);
 WebSocketsServer WebSocketServer = WebSocketsServer(81);
 ESP8266HTTPUpdateServer OTAServer;
 Wordclock wordclock;
-
-/***********************************************************************************************************************
- * Local function declarations
- ***********************************************************************************************************************/
-void Runnable_100_ms();
-void WebSocketReceive(uint8_t* payload, uint8_t length);
-bool Debounce(uint16_t* debCnt, const uint16_t debTime);
-String GetVersion();
+Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 
 /***********************************************************************************************************************
  * Function definitions
@@ -203,6 +205,7 @@ void Runnable_100_ms()
 {
   wordclock.rainbow(0, 10);
   wordclock.show();
+  bootButton.poll();
 }
 
 /**
@@ -217,25 +220,15 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
 }
 
 /**
- * @brief 
+ * @brief Callback for boot pin
  * 
- * @param debCnt 
- * @param debTime 
- * @return true 
- * @return false 
  */
-bool Debounce(uint16_t* debCnt, const uint16_t debTime)
+void BootPinCbk()
 {
-  bool retVal = false;
-
-  (*debCnt)++;
-  if(*debCnt >= debTime)
-  {
-    retVal = true;
-    *debCnt = 0u;
-  }
-
-  return retVal;
+  Serial.println("-----Shut Down-----");
+  wordclock.powerOff();
+  delay(100);
+  ESP.reset();
 }
 
 /**
