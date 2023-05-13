@@ -83,18 +83,16 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define ELEMENTS_IN_TEXT_TABLE  (sizeof(LED_Text) / sizeof(LED_Text[0]))
 #define BH1750_ADDR             (0x23u)
 
-//ThreeWire             myWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN); // IO, SCLK, CE
-//RtcDS1302<ThreeWire>  Rtc(myWire);
-//BH1750 lightMeter(BH1750_ADDR);
 class Wordclock : public Adafruit_NeoPixel
 {
 private:
     const bool _matrixSerpentineLayout = true;
     const bool _matrixVertical = false;
-    const uint8_t _matrixAngle = 0;
-    BH1750* lightMeter;
-    ThreeWire* myWire;
-    RtcDS1302<ThreeWire>* Rtc;
+    const uint8_t _matrixAngle = 0u;
+    uint8_t _brightness = 30u;
+    BH1750* _lightMeter = NULL;
+    ThreeWire* _myWire = NULL;
+    RtcDS1302<ThreeWire>* _rtc = NULL;
     
     void drawWord(const String s);
     void setMinute(uint8_t min);
@@ -103,34 +101,31 @@ private:
     void printDateTime(const RtcDateTime& dt);
     
 public:
-    Wordclock(uint16_t n = WS2812_MAX_LEDS, int16_t pin = WS2812_DATA_PIN, uint8_t r=255,uint8_t g=255, uint8_t b=255, uint8_t brightness=100) : 
-        Adafruit_NeoPixel(n, pin, NEO_GRB + NEO_KHZ800)
+    Wordclock() : Adafruit_NeoPixel(WS2812_MAX_LEDS, MCAL_LED_DIN_PIN)
     {
         Serial.println("Initializing Wordclock");
-        lightMeter = new BH1750(BH1750_ADDR);
-        Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
-        if (lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE)) {
-            Serial.println(F("BH1750 initialised"));
-        } else {
-            Serial.println(F("Error initialising BH1750"));
-        }
-        myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
-        Rtc = new RtcDS1302<ThreeWire>(*myWire);
-        Rtc->Begin();
+        _lightMeter = new BH1750(BH1750_ADDR);
+        _myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
+        _rtc = new RtcDS1302<ThreeWire>(*_myWire);
 
+        Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
+        _lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE) ? 
+            Serial.println(F("BH1750 initialised")) :
+            Serial.println(F("Error initialising BH1750"));
+        _rtc->Begin();
         begin();
         powerOn();
         delay(100);
         clear();
+        setBrightness(map(_brightness, 0, 255, 0, 100));
         show();
-        setBrightness(map(brightness, 0, 255, 0, 100));
     }
     ~Wordclock()
     {
         powerOff();
-        delete(lightMeter);
-        delete(myWire);
-        delete(Rtc);
+        delete(_lightMeter);
+        delete(_myWire);
+        delete(_rtc);
     };
 
     // LED Functions
@@ -139,7 +134,7 @@ public:
     void showTime(uint8_t hour, uint8_t minute);
     void setColor(uint32_t c);
     void setColor(uint8_t r, uint8_t g, uint8_t b);
-    uint32_t GetColor();
+    uint32_t getColor();
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     
     // RTC Functions
