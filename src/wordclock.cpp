@@ -13,7 +13,6 @@
  ***********************************************************************************************************************/
 #include "wordclock.h"
 
-#define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
 
 
 /***********************************************************************************************************************
@@ -96,18 +95,43 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
   setPixelColor(i, c);
 }
 
-void printDateTime(const RtcDateTime& dt)
+/**
+ * @brief Get RTC Date Time
+ * 
+ * @return RtcDateTime 
+ */
+RtcDateTime Wordclock::getRTCDateTime()
 {
-    char datestring[20];
+  // Check if object is valid
+  if(_rtc == nullptr) return;
+  // return date time object
+  return _rtc->GetDateTime();
+}
 
-    snprintf_P(datestring, 
-            COUNTOF(datestring),
-            PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-            dt.Month(),
-            dt.Day(),
-            dt.Year(),
-            dt.Hour(),
-            dt.Minute(),
-            dt.Second() );
-    Serial.println(datestring);
+/**
+ * @brief Update RTC with date time
+ * 
+ * @param dt 
+ */
+void Wordclock::setRTCDateTime(RtcDateTime dt)
+{
+  // Check if object is valid
+  if(_rtc == nullptr) return;
+  // set date time object
+  _rtc->SetDateTime(dt);
+}
+
+/**
+ * @brief Returns light level in LUX
+ * 
+ * @return float light level
+ */
+float Wordclock::getAmbBrightness()
+{
+  if(_lightMeter == nullptr) return;
+
+  if(_lightMeter->measurementReady())
+  {
+    return _lightMeter->readLightLevel();
+  }
 }

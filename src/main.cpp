@@ -28,6 +28,7 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
 #include <Arduino_JSON.h>
+#include <RtcDateTime.h>
 
 
 /***********************************************************************************************************************
@@ -35,6 +36,7 @@
  ***********************************************************************************************************************/
 static bool WiFi_Setup_Successful = false;
 static uint32_t old_time_100 = 0u;
+static uint32_t old_time_1000 = 0u;
 
 const char* mdns_name = "Wordclock";
 
@@ -42,6 +44,7 @@ const char* mdns_name = "Wordclock";
  * Local function declarations and objects
  ***********************************************************************************************************************/
 void Runnable_100_ms();
+void Runnable_1000_ms();
 void WebSocketReceive(uint8_t* payload, uint8_t length);
 void BootPinCbk();
 String GetVersion();
@@ -136,13 +139,11 @@ void setup()
     });
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
     HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
+    HtmlServer.serveStatic("/index.js", LittleFS, "/index.js");
     HtmlServer.serveStatic("/update", LittleFS, "/index_color.html");
 
     // Configure WebSocket Server
     WebSocketServer.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
-      String text;
-      JSONVar sliderValues;
-      String jsonString;
       switch (type)
       {
       case WStype_DISCONNECTED:
@@ -152,6 +153,7 @@ void setup()
         Serial.println("Client Connected");
         break;
       case WStype_TEXT:
+        Serial.println("Data Received");
         WebSocketReceive(payload, length);
         break;
       default:
@@ -188,7 +190,13 @@ void loop()
     Runnable_100_ms();
   }
 
-  // Execute Server
+  // check if 1000ms passed
+  if ((uint32_t)(sys_time - old_time_1000) >= 1000u) {    
+    old_time_1000 = sys_time;
+    Runnable_1000_ms();
+  }
+
+  // Execute Server Objects
   if(WiFi_Setup_Successful == true)
   {
     HtmlServer.handleClient();
@@ -198,7 +206,7 @@ void loop()
 }
 
 /**
- * @brief called every 10ms
+ * @brief called every 100ms
  * 
  */
 void Runnable_100_ms()
@@ -209,6 +217,24 @@ void Runnable_100_ms()
 }
 
 /**
+ * @brief called every 1000ms
+ * 
+ */
+void Runnable_1000_ms()
+{
+  RtcDateTime dt = wordclock.getRTCDateTime();
+  char datetimeBuffer[20] = "";
+  sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
+    dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+  
+  Serial.println((String)wordclock.getAmbBrightness());
+  Serial.println((String)(datetimeBuffer));
+
+  WebSocketSend("Light", &((String)wordclock.getAmbBrightness()));
+  WebSocketSend("Time", &((String)(datetimeBuffer)));
+}
+
+/**
  * @brief 
  * 
  * @param payload 
@@ -216,7 +242,30 @@ void Runnable_100_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
+  String text;
 
+  for(uint8_t i=0; i<length; i++)
+  {
+    text += *payload;
+  }
+
+  if(text == "#esp_reset") ESP.reset();
+  else if(text == "pwr_on_off") Serial.println("Turn Leds on/off");
+  else if(text == "color_reset") Serial.println("Reset Color"); 
+
+}
+
+void WebSocketSend(String key, const void* data)
+{
+  JSONVar objects;
+  String jsonString;
+
+  // Build JSON object
+  objects[key] = *(String*)data;;
+  jsonString = JSON.stringify(objects);
+
+  // Broadcast to all websocket clients
+  WebSocketServer.broadcastTXT(jsonString);
 }
 
 /**
@@ -226,9 +275,9 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
 void BootPinCbk()
 {
   Serial.println("-----Shut Down-----");
-  wordclock.powerOff();
+  //wordclock.powerOff();
   delay(100);
-  ESP.reset();
+  //ESP.reset();
 }
 
 /**

@@ -83,6 +83,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define ELEMENTS_IN_TEXT_TABLE  (sizeof(LED_Text) / sizeof(LED_Text[0]))
 #define BH1750_ADDR             (0x23u)
 
+#define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
 class Wordclock : public Adafruit_NeoPixel
 {
 private:
@@ -98,7 +99,20 @@ private:
     void setMinute(uint8_t min);
     String numToString(const uint8_t num);
     void setColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness);
-    void printDateTime(const RtcDateTime& dt);
+    void printDateTime(const RtcDateTime& dt)
+    {
+        char datestring[20];
+        snprintf_P(datestring, 
+                COUNTOF(datestring),
+                PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+                dt.Month(),
+                dt.Day(),
+                dt.Year(),
+                dt.Hour(),
+                dt.Minute(),
+                dt.Second() );
+        Serial.println(datestring);
+    }
     
 public:
     Wordclock() : Adafruit_NeoPixel(WS2812_MAX_LEDS, MCAL_LED_DIN_PIN)
@@ -138,11 +152,11 @@ public:
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     
     // RTC Functions
-    void getRTCTime(uint8_t *hour, uint8_t *minute);
-    void setRTCTime(uint8_t *hour, uint8_t *minute);
+    void setRTCDateTime(RtcDateTime dt);
+    RtcDateTime getRTCDateTime();
     
     // Light Sensor Functions
-    float getAmbientHue();
+    float getAmbBrightness();
 };
 
 

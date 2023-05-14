@@ -15,9 +15,6 @@ document.getElementById('#btn_rst_sldr').addEventListener('click', function() {
     websocket.send('#color_reset');
 });
 
-
-
-
 function init() {
     console.log('Trying to open a WebSocket connection...')
     websocket = new WebSocket(gateway + ':81/');
