@@ -35,12 +35,9 @@ public:
  * @param period    Poll period in milliseconds
  * @param callback  Callback function
  */
-Debounce::Debounce(uint8_t pin, uint16_t time, uint8_t period, void(*callback)(void))
+Debounce::Debounce(uint8_t pin, uint16_t time, uint8_t period, void(*callback)(void)) :
+    _pin(pin), _time(time), _period(period), _callback(callback)
 {
-    _callback = callback;
-    _pin = pin;
-    _time = time;
-    _period = period;
     _debounceCnt = resetCounter();
 }
 

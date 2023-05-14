@@ -46,6 +46,7 @@ const char* mdns_name = "Wordclock";
 void Runnable_100_ms();
 void Runnable_1000_ms();
 void WebSocketReceive(uint8_t* payload, uint8_t length);
+void WebSocketSend(String key, const void* data);
 void BootPinCbk();
 String GetVersion();
 
@@ -222,16 +223,17 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
+  float ambBrightness = wordclock.getAmbBrightness();
   RtcDateTime dt = wordclock.getRTCDateTime();
-  char datetimeBuffer[20] = "";
+  char datetimeBuffer[25] = "";
   sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
     dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
   
-  Serial.println((String)wordclock.getAmbBrightness());
+  Serial.println((String)(ambBrightness));
   Serial.println((String)(datetimeBuffer));
 
-  WebSocketSend("Light", &((String)wordclock.getAmbBrightness()));
-  WebSocketSend("Time", &((String)(datetimeBuffer)));
+  WebSocketSend("Light", &ambBrightness);
+  WebSocketSend("Time", &datetimeBuffer);
 }
 
 /**

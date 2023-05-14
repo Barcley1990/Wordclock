@@ -102,8 +102,9 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
  */
 RtcDateTime Wordclock::getRTCDateTime()
 {
+  RtcDateTime dummy(0);
   // Check if object is valid
-  if(_rtc == nullptr) return;
+  if(_rtc == nullptr) return dummy;
   // return date time object
   return _rtc->GetDateTime();
 }
@@ -128,10 +129,13 @@ void Wordclock::setRTCDateTime(RtcDateTime dt)
  */
 float Wordclock::getAmbBrightness()
 {
-  if(_lightMeter == nullptr) return;
+  float retVal = 0.0f;
+  if(_lightMeter == nullptr) return retVal;
 
   if(_lightMeter->measurementReady())
   {
-    return _lightMeter->readLightLevel();
+    retVal = _lightMeter->readLightLevel();
   }
+
+  return retVal;
 }
