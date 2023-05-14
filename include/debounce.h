@@ -55,7 +55,7 @@ Debounce::~Debounce()
  */
 void Debounce::poll()
 {
-    _pin == HIGH ? _debounceCnt-- : _debounceCnt = 0u;
+    digitalRead(_pin) == HIGH ? _debounceCnt = resetCounter() : _debounceCnt--;
 
     if(_debounceCnt == 0u)
     {

@@ -127,12 +127,6 @@ public:
             Serial.println(F("BH1750 initialised")) :
             Serial.println(F("Error initialising BH1750"));
         _rtc->Begin();
-        begin();
-        powerOn();
-        delay(100);
-        clear();
-        setBrightness(map(_brightness, 0, 255, 0, 100));
-        show();
     }
     ~Wordclock()
     {

@@ -1,46 +1,66 @@
 
-var gateway = `ws://${window.location.hostname}/ws`;
-var websocket;
 
-document.getElementById('#btn_esp_rst').addEventListener('click', function() {
-    console.log('button clicked');
-    websocket.send('#esp_reset');
-});
-document.getElementById('#btn_led_pwr').addEventListener('click', function() {
-    console.log('button clicked');
-    websocket.send('#pwr_on_off');
-});
-document.getElementById('#btn_rst_sldr').addEventListener('click', function() {
-    console.log('button clicked');
-    websocket.send('#color_reset');
-});
+const buttonESPReset = document.getElementById('#btn_esp_rst');
+const buttonLEDPower = document.getElementById('#btn_led_pwr');
+const buttonSliderReset = document.getElementById('#btn_rst_sldr');
+const sliderChannelRed =  document.getElementById('slider1');
+const sliderChannelGreen =  document.getElementById('slider2');
+const sliderChannelBlue =  document.getElementById('slider3');
+
+
+if(buttonESPReset) {
+    buttonESPReset.addEventListener('click', function() {
+        console.log('button clicked');
+        websocket.send('#esp_reset');
+    });
+} else {
+    console.log('Button does not exist')
+}
+
+if(buttonLEDPower) {
+    buttonLEDPower.addEventListener('click', function() {
+        console.log('button clicked');
+        websocket.send('#pwr_on_off');
+    });
+} else {
+    console.log('Button does not exist')
+}
+
+if(buttonSliderReset) {
+    buttonSliderReset.addEventListener('click', function() {
+        console.log('button clicked');
+        websocket.send('#color_reset');
+    });
+} else {
+    console.log('Button does not exist')
+}
+
 
 function init() {
-    console.log('Trying to open a WebSocket connection...')
-    websocket = new WebSocket(gateway + ':81/');
+    console.log('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
+    websocket = new WebSocket('ws://'+ window.location.hostname +':81/', ['arduino']);
 
     websocket.onopen = function() {
-        console('Open connection');
-        document.getElementById('slider1').innerHTML = 50;
-        document.getElementById('slider2').innerHTML = 50;
-        document.getElementById('sliderValue3').innerHTML = 50;
+        console.log('Open connection');
     };
-      websocket.onclose = function() {
-          log.console('Close connection');
-      };
+
+    websocket.onclose = function() {
+        console.log('Close connection');
+    };
 
     websocket.onmessage = function(event) {
-        console.log(event.data);
         var JSONObj = JSON.parse(event.data);
         var keys = Object.keys(JSONObj);
 
         for (var i = 0; i < keys.length; i++){
             var key = keys[i];
             if(key == 'Light') {
-                document.getElementById(key).innerHTML.value = JSONObj[key];
+                console.log(key); console.log(JSONObj[key]);
+                document.getElementById(key).innerHTML = JSONObj[key];
             }
             else if(key == 'Time') {
-                document.getElementById(key).innerHTML.value = JSONObj[key];
+                console.log(key); console.log(JSONObj[key]);
+                document.getElementById(key).innerHTML = JSONObj[key];
             }
             else {
                 document.getElementById(key).innerHTML = JSONObj[key];
@@ -49,8 +69,6 @@ function init() {
         }
     };
 }
-
-
 
 function updateSliderPWM(element) {
     var sliderNumber = element.id.charAt(element.id.length-1);

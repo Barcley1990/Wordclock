@@ -54,7 +54,7 @@ IPAddress local_IP(192, 168, 178, 90);
 IPAddress gateway(192, 168, 178, 1);
 IPAddress subnet(255, 255, 255, 255);
 ESP8266WebServer HtmlServer(80);
-WebSocketsServer WebSocketServer = WebSocketsServer(81);
+WebSocketsServer webSocket = WebSocketsServer(81);
 ESP8266HTTPUpdateServer OTAServer;
 Wordclock wordclock;
 Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
@@ -141,10 +141,10 @@ void setup()
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
     HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
     HtmlServer.serveStatic("/index.js", LittleFS, "/index.js");
-    HtmlServer.serveStatic("/update", LittleFS, "/index_color.html");
+    HtmlServer.serveStatic("/update", LittleFS, "/update.html");
 
     // Configure WebSocket Server
-    WebSocketServer.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
+    webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
       switch (type)
       {
       case WStype_DISCONNECTED:
@@ -154,7 +154,7 @@ void setup()
         Serial.println("Client Connected");
         break;
       case WStype_TEXT:
-        Serial.println("Data Received");
+        Serial.print("Data Received: ");
         WebSocketReceive(payload, length);
         break;
       default:
@@ -165,7 +165,7 @@ void setup()
     // Initialize servers (HTML, WS, OTA, mDNS)
     OTAServer.setup(&HtmlServer);
     HtmlServer.begin();
-    WebSocketServer.begin();
+    webSocket.begin();
     if (MDNS.begin(mdns_name)) {
       Serial.print("DNS started: ");
       Serial.println("http://" + String(mdns_name) + ".local/");
@@ -176,6 +176,14 @@ void setup()
     Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
   }
   WiFi_Setup_Successful = true;
+
+  // Initialize led strip
+  wordclock.powerOn();
+  delay(100);
+  wordclock.begin();
+  wordclock.clear();
+  wordclock.setBrightness(map(50, 0, 255, 0, 100));
+  wordclock.show();
 }
 
 /**
@@ -201,7 +209,7 @@ void loop()
   if(WiFi_Setup_Successful == true)
   {
     HtmlServer.handleClient();
-    WebSocketServer.loop();
+    webSocket.loop();
     MDNS.update();
   }
 }
@@ -212,7 +220,7 @@ void loop()
  */
 void Runnable_100_ms()
 {
-  wordclock.rainbow(0, 10);
+  wordclock.rainbow();
   wordclock.show();
   bootButton.poll();
 }
@@ -223,15 +231,12 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  float ambBrightness = wordclock.getAmbBrightness();
+  String ambBrightness = (String)wordclock.getAmbBrightness();
   RtcDateTime dt = wordclock.getRTCDateTime();
   char datetimeBuffer[25] = "";
   sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
     dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
   
-  Serial.println((String)(ambBrightness));
-  Serial.println((String)(datetimeBuffer));
-
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
 }
@@ -244,16 +249,23 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
-  String text;
+  String data;
 
-  for(uint8_t i=0; i<length; i++)
-  {
-    text += *payload;
+  for(uint8_t i=0; i<length; i++) {
+    data += *(char*)payload++;
   }
+  Serial.println(data);
 
-  if(text == "#esp_reset") ESP.reset();
-  else if(text == "pwr_on_off") Serial.println("Turn Leds on/off");
-  else if(text == "color_reset") Serial.println("Reset Color"); 
+  if(data == "#esp_reset") {
+    ESP.reset();
+  }
+  else if(data == "pwr_on_off") {
+    Serial.println("Turn Leds on/off");
+    wordclock.powerOff();
+  }
+  else if(data == "color_reset") {
+    Serial.println("Reset Color"); 
+  }
 
 }
 
@@ -267,7 +279,7 @@ void WebSocketSend(String key, const void* data)
   jsonString = JSON.stringify(objects);
 
   // Broadcast to all websocket clients
-  WebSocketServer.broadcastTXT(jsonString);
+  webSocket.broadcastTXT(jsonString);
 }
 
 /**
@@ -276,10 +288,10 @@ void WebSocketSend(String key, const void* data)
  */
 void BootPinCbk()
 {
-  Serial.println("-----Shut Down-----");
-  //wordclock.powerOff();
+  Serial.println("-----Rebooting Wordclock-----");
+  wordclock.powerOff();
   delay(100);
-  //ESP.reset();
+  ESP.reset();
 }
 
 /**

@@ -53,12 +53,24 @@ ul li:hover a{
   background-color: #4CAF50; /* Green */
   border: none;
   color: white;
-  padding: 15px 32px;
-  margin: 10px;
+  padding: 16px 32px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
+  margin: 4px 2px;
+  height:50px;
+  width:200px;
+  transition-duration: 0.2s;
+  cursor: pointer;
+  transition-duration: 0.2s;
+}
+
+.button:hover {
+  background-color: white; 
+  color: black; 
+  border: 2px solid #4CAF50;
+}
 }
 .card-grid {
     max-width: 700px;
@@ -118,4 +130,8 @@ ul li:hover a{
   height: 100vh;
   transition: all .5s;
   color: white;
+}
+
+.inline {
+  display: inline;
 }

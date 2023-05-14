@@ -7,7 +7,6 @@
 	    <title>Wordclocl</title>
 	    <link rel="stylesheet" type="text/css" href="style.css">
 	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-		<script type="text/javascript" src="index.js"></script>
 	</HEAD>
 
 	<BODY>
@@ -29,10 +28,17 @@
 					Wordclock main page. 
 					<br><br> 
 				</section>
-				<p>Current RTC time:</p>
-				<p id="Time"></p>
-				<p>Current ambient brightness:</p>
-				<p id="Light"></p>
+				<div>
+					<p class="inline">Current RTC time: </p>
+					<p class="inline" id="Time"></p>
+				</div>
+				<div>
+					<p class="inline"> Current ambient brightness:</p>
+					<p class="inline" id="Light"></p>
+					<p class="inline"> Lux</p>
+				</div>
+				
+				
 
 				
 
@@ -42,8 +48,7 @@
 		                <p class="switch">
 		                    <input type="range" onchange="updateSliderPWM(this)" id="slider1" min="0" max="100" step="1" value ="0" class="slider">
 		                </p>
-		                <p class="state">Brightness: <span id="sliderValue1"></span> &percnt;</p>
-		            </div>
+		                <p class="state">Brightness: <span<script type="text/javascript" src="index.js"></script>
 		            <div class="card">
 		                <p class="card-title"> Blue Channel</p>
 		                <p class="switch">
@@ -76,6 +81,8 @@
 				</div>
 			</div>
 		</div>
+
+		<script type="text/javascript" src="index.js"></script>
 	</BODY>
 
 
