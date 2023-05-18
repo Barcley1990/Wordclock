@@ -81,11 +81,40 @@ void setup()
   Serial.println("");
   Serial.println("");
   Serial.println(header);
+  Serial.println("");
+  Serial.println("");
+  Serial.println("--------------------------------------");
+  Serial.println("ESP Uhr");
   Serial.print("\nVersion: ");
   Serial.println(GetVersion());
-  Serial.println("");
+  Serial.printf("Chip ID         : %08X\n", ESP.getChipId());
+  Serial.printf("Flash ID        : %08X\n\n", ESP.getFlashChipId());
+  Serial.printf("CPU Speed       : %u MHz \n\n", ESP.getCpuFreqMHz());
+
+  Serial.printf("Flash real Size : %u KByte\n",
+                ESP.getFlashChipRealSize() / 1024);
+  Serial.printf("Flash ide  Size : %u KByte\n",
+                ESP.getFlashChipSize() / 1024);
+  Serial.printf("Flash ide Speed : %u\n\n", ESP.getFlashChipSpeed());
+
+  Serial.printf("Free Heap Size  : %u Byte\n", ESP.getFreeHeap());
+  Serial.printf("Sketch Size     : %u Byte \n", ESP.getSketchSize());
+  Serial.printf("Free Sketch Size: %u Byte \n\n", ESP.getFreeSketchSpace());
+
+  Serial.printf("SDK Version     : %s\n", ESP.getSdkVersion());
+  Serial.print("RESET Info      : ");
+  Serial.println(ESP.getResetInfo());
+  Serial.print("COMPILED        : ");
+  Serial.print(__DATE__);
+  Serial.print(" ");
+  Serial.println(__TIME__);
+
+  Serial.println("--------------------------------------");
+  Serial.println("Ende Setup");
+  Serial.println("--------------------------------------");
   Serial.println("");
   delay(100);
+
 
   // Initialize LittleFS
   Serial.print("Try to initialize LittleFS ");
