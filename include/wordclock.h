@@ -95,10 +95,6 @@ private:
     ThreeWire* _myWire = NULL;
     RtcDS1302<ThreeWire>* _rtc = NULL;
     
-    void drawWord(const String s);
-    void setMinute(uint8_t min);
-    String numToString(const uint8_t num);
-    void setColorBrighness( uint16_t n, uint8_t r, uint8_t g, uint8_t b, uint16_t brightness);
     void printDateTime(const RtcDateTime& dt)
     {
         char datestring[20];
@@ -121,10 +117,6 @@ public:
     // LED Functions
     void powerOn();
     void powerOff();
-    void showTime(uint8_t hour, uint8_t minute);
-    void setColor(uint32_t c);
-    void setColor(uint8_t r, uint8_t g, uint8_t b);
-    uint32_t getColor();
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     
     // RTC Functions
