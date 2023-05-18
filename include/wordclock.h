@@ -115,26 +115,8 @@ private:
     }
     
 public:
-    Wordclock() : Adafruit_NeoPixel(WS2812_MAX_LEDS, MCAL_LED_DIN_PIN)
-    {
-        Serial.println("Initializing Wordclock");
-        _lightMeter = new BH1750(BH1750_ADDR);
-        _myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
-        _rtc = new RtcDS1302<ThreeWire>(*_myWire);
-
-        Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
-        _lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE) ? 
-            Serial.println(F("BH1750 initialised")) :
-            Serial.println(F("Error initialising BH1750"));
-        _rtc->Begin();
-    }
-    ~Wordclock()
-    {
-        powerOff();
-        delete(_lightMeter);
-        delete(_myWire);
-        delete(_rtc);
-    };
+    Wordclock();
+    ~Wordclock();
 
     // LED Functions
     void powerOn();
