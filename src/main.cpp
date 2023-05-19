@@ -18,6 +18,8 @@
 #include "version.h"
 #include "wordclock.h"
 #include "debounce.h"
+#include "layouts/ilayout.h"
+#include "layouts/layout_de_11x10.h"
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -56,7 +58,8 @@ IPAddress subnet(255, 255, 255, 255);
 ESP8266WebServer HtmlServer(80);
 WebSocketsServer webSocket = WebSocketsServer(81);
 ESP8266HTTPUpdateServer OTAServer;
-Wordclock wordclock;
+ILayout* layout;
+Wordclock* wordclock;
 Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 
 /***********************************************************************************************************************
@@ -207,12 +210,16 @@ void setup()
   WiFi_Setup_Successful = true;
 
   // Initialize led strip
-  wordclock.powerOn();
+  layout = new Layout_De_11x10();
+  wordclock = new Wordclock(layout);
+  delete(layout);
+
+  wordclock->powerOn();
   delay(100);
-  wordclock.begin();
-  wordclock.clear();
-  wordclock.setBrightness(map(50, 0, 255, 0, 100));
-  wordclock.show();
+  wordclock->begin();
+  wordclock->clear();
+  wordclock->setBrightness(map(50, 0, 255, 0, 100));
+  wordclock->show();
 }
 
 /**
@@ -249,9 +256,10 @@ void loop()
  */
 void Runnable_100_ms()
 {
-  wordclock.rainbow();
-  wordclock.show();
+  wordclock->rainbow();
+  wordclock->show();
   bootButton.poll();
+ // wordclock->setTime(0,0):
 }
 
 /**
@@ -260,8 +268,8 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  String ambBrightness = (String)wordclock.getAmbBrightness();
-  RtcDateTime dt = wordclock.getRTCDateTime();
+  String ambBrightness = (String)wordclock->getAmbBrightness();
+  RtcDateTime dt = wordclock->getRTCDateTime();
   char datetimeBuffer[25] = "";
   sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
     dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
@@ -290,7 +298,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   }
   else if(data == "pwr_on_off") {
     Serial.println("Turn Leds on/off");
-    wordclock.powerOff();
+    wordclock->powerOff();
   }
   else if(data == "color_reset") {
     Serial.println("Reset Color"); 
@@ -318,7 +326,7 @@ void WebSocketSend(String key, const void* data)
 void BootPinCbk()
 {
   Serial.println("-----Rebooting Wordclock-----");
-  wordclock.powerOff();
+  wordclock->powerOff();
   delay(100);
   ESP.reset();
 }

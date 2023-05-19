@@ -36,6 +36,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #include <Arduino.h>
 
 #include "mcal.h"
+#include "layouts/ilayout.h"
 
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
@@ -94,36 +95,29 @@ private:
     BH1750* _lightMeter = NULL;
     ThreeWire* _myWire = NULL;
     RtcDS1302<ThreeWire>* _rtc = NULL;
+    ILayout* layout = nullptr;
     
-    void printDateTime(const RtcDateTime& dt)
-    {
-        char datestring[20];
-        snprintf_P(datestring, 
-                COUNTOF(datestring),
-                PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-                dt.Month(),
-                dt.Day(),
-                dt.Year(),
-                dt.Hour(),
-                dt.Minute(),
-                dt.Second() );
-        Serial.println(datestring);
-    }
+    void printDateTime(const RtcDateTime& dt);
     
 public:
-    Wordclock();
+    Wordclock(ILayout* layout);
     ~Wordclock();
 
-    // LED Functions
+    // Comon Functions
     void powerOn();
     void powerOff();
+
+    // Clock Functions
+    void setTime(uint8_t hour, uint8_t minute);
+
+    // LED Functions
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);
     RtcDateTime getRTCDateTime();
     
-    // Light Sensor Functions
+    // LDR Functions
     float getAmbBrightness();
 };
 

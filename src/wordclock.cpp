@@ -18,7 +18,7 @@
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
-Wordclock::Wordclock() : Adafruit_NeoPixel(WS2812_MAX_LEDS, MCAL_LED_DIN_PIN)
+Wordclock::Wordclock(ILayout* layout) : Adafruit_NeoPixel(layout->getMatrixCols()*layout->getMatrixRows(), MCAL_LED_DIN_PIN)
 {
     Serial.println("Initializing Wordclock");
     _lightMeter = new BH1750(BH1750_ADDR);
@@ -30,6 +30,7 @@ Wordclock::Wordclock() : Adafruit_NeoPixel(WS2812_MAX_LEDS, MCAL_LED_DIN_PIN)
         Serial.println(F("BH1750 initialised")) :
         Serial.println(F("Error initialising BH1750"));
     _rtc->Begin();
+    layout = layout;
 }
 Wordclock::~Wordclock()
 {
@@ -58,6 +59,49 @@ void Wordclock::powerOn()
   clear();
   digitalWrite(MCAL_LED_EN_PIN, HIGH);
   show();
+}
+
+/**
+ * @brief 
+ * 
+ */
+void Wordclock::setTime(uint8_t h, uint8_t m)
+{
+  // Update "matrix" depending on the loaded layout
+  layout->setMatrixTime(ESIST);
+  switch (h)
+  {
+  case 1:
+  case 2:
+  case 3:
+  case 4:
+  case 5:
+  case 6:
+  case 7:
+  case 8:
+  case 9:
+  case 10:
+  case 11:
+  case 12: 
+  default:
+    break;
+  }
+  
+  //Get matrix and set correspondnding pixels
+  for(uint8_t x=0; x<layout->getMatrixCols(); x++)
+  {
+    for(uint8_t y=0; y<layout->getMatrixRows(); y++)
+    {
+      if(layout->getMatrixPixel(x,y) == SET) 
+      {
+        setPixelColorXY(x,y,Color(100,100,100));
+      }
+      else 
+      {
+        setPixelColorXY(x,y,0);
+      }
+    }
+  }
 }
 
 /**
@@ -160,3 +204,26 @@ float Wordclock::getAmbBrightness()
 
   return retVal;
 }
+
+
+//******************************************************************
+// PRIVATE FUNCTIONS
+/**
+ * @brief 
+ * 
+ * @param dt 
+ */
+void Wordclock::printDateTime(const RtcDateTime& dt)
+{
+    char datestring[20];
+    snprintf_P(datestring, 
+            COUNTOF(datestring),
+            PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+            dt.Month(),
+            dt.Day(),
+            dt.Year(),
+            dt.Hour(),
+            dt.Minute(),
+            dt.Second() );
+    Serial.println(datestring);
+    }
