@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-enum Terms {
+enum class Terms {
     ESIST,
     UHR,
     VIRTEL,
@@ -13,6 +13,8 @@ enum Terms {
     NACH,
 
     EIN,
+    EINE,
+    EINS,
     ZWEI,
     DREI,
     VIER,
@@ -25,11 +27,6 @@ enum Terms {
     ELF,
     ZWOELF,
     ZWANZIG
-};
-
-enum State {
-    SET = 1,
-    CLEAR = 0
 };
 
 class ILayout
@@ -46,13 +43,13 @@ public:
 
     virtual uint8_t getMatrixCols() = 0;
 
-    virtual void setMatrixPixel(uint8_t col, uint8_t row, State state) = 0;
+    virtual void setMatrixPixel(uint8_t col, uint8_t row, bool state) = 0;
 
-    virtual State getMatrixPixel(uint8_t col, uint8_t row) = 0;
+    virtual bool getMatrixPixel(uint8_t col, uint8_t row) = 0;
 
     virtual void setMatrixBackground() {};
 
-    virtual void setMatrixTime(Terms terms) = 0;
+    virtual void setMatrixTerm(Terms terms) = 0;
 
     virtual void run() {};
 };

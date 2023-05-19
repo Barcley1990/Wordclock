@@ -18,7 +18,8 @@
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
-Wordclock::Wordclock(ILayout* layout) : Adafruit_NeoPixel(layout->getMatrixCols()*layout->getMatrixRows(), MCAL_LED_DIN_PIN)
+Wordclock::Wordclock(ILayout* layout) : 
+  Adafruit_NeoPixel((layout->getMatrixCols()*layout->getMatrixRows()) + 4u , MCAL_LED_DIN_PIN)
 {
     Serial.println("Initializing Wordclock");
     _lightMeter = new BH1750(BH1750_ADDR);
@@ -30,7 +31,7 @@ Wordclock::Wordclock(ILayout* layout) : Adafruit_NeoPixel(layout->getMatrixCols(
         Serial.println(F("BH1750 initialised")) :
         Serial.println(F("Error initialising BH1750"));
     _rtc->Begin();
-    layout = layout;
+    _layout = layout;
 }
 Wordclock::~Wordclock()
 {
@@ -67,39 +68,176 @@ void Wordclock::powerOn()
  */
 void Wordclock::setTime(uint8_t h, uint8_t m)
 {
-  // Update "matrix" depending on the loaded layout
-  layout->setMatrixTime(ESIST);
-  switch (h)
+  uint8_t min = m % 10u;
+  
+  //Set min pixels
+  if(min > 5u) min -= 5u;
+  if(min > 0u && min < 5u)
   {
-  case 1:
-  case 2:
-  case 3:
-  case 4:
-  case 5:
-  case 6:
-  case 7:
-  case 8:
-  case 9:
-  case 10:
-  case 11:
-  case 12: 
-  default:
-    break;
+    for(uint i=(_layout->getMatrixCols()*_layout->getMatrixRows())+1; i<=min; i++)
+    {
+      setPixelColor(i + min, Color(100,100,100));
+    }
   }
   
-  //Get matrix and set correspondnding pixels
-  for(uint8_t x=0; x<layout->getMatrixCols(); x++)
+
+  if(_layout == nullptr) return;
+  // Update "matrix" depending on the loaded layout
+  clearFrame();
+  _layout->setMatrixTerm(Terms::ESIST);
+  
+  // Set Minutes
+  switch (m)
   {
-    for(uint8_t y=0; y<layout->getMatrixRows(); y++)
+    case 0: /*Full Hour*/ break;
+    case 1: break;
+    case 2: break;
+    case 3: break;
+    case 4: break;
+    case 5: 
+    case 6: 
+    case 7: 
+    case 8: 
+    case 9: 
+      _layout->setMatrixTerm(Terms::FUENF); 
+      _layout->setMatrixTerm(Terms::NACH);
+      break;
+    case 10: 
+    case 11: 
+    case 12:
+    case 13: 
+    case 14:
+      _layout->setMatrixTerm(Terms::ZEHN); 
+      _layout->setMatrixTerm(Terms::NACH);
+      break;
+    case 15: 
+    case 16: 
+    case 17: 
+    case 18: 
+    case 19: 
+      _layout->setMatrixTerm(Terms::VIRTEL); 
+      _layout->setMatrixTerm(Terms::NACH);
+      break;
+    case 20: 
+    case 21:
+    case 22: 
+    case 23:
+    case 24:
+      _layout->setMatrixTerm(Terms::ZWANZIG); 
+      _layout->setMatrixTerm(Terms::NACH);
+      break;
+    case 25:
+    case 26: 
+    case 27:
+    case 28: 
+    case 29:
+      _layout->setMatrixTerm(Terms::FUENF); 
+      _layout->setMatrixTerm(Terms::VOR);
+      _layout->setMatrixTerm(Terms::HALB);
+      h += 1; //Offset Hour
+      break;
+    case 30: 
+    case 31:
+    case 32: 
+    case 33:
+    case 34: 
+      _layout->setMatrixTerm(Terms::HALB);
+      h += 1; //Offset Hour
+      break;
+    case 35:
+    case 36: 
+    case 37:
+    case 38: 
+    case 39:
+      _layout->setMatrixTerm(Terms::FUENF); 
+      _layout->setMatrixTerm(Terms::NACH);
+      _layout->setMatrixTerm(Terms::HALB);
+      h += 1; //Offset Hour
+      break;
+    case 40: 
+    case 41:
+    case 42: 
+    case 43:
+    case 44:
+      _layout->setMatrixTerm(Terms::ZEHN);
+      _layout->setMatrixTerm(Terms::NACH);
+      _layout->setMatrixTerm(Terms::HALB);
+      h += 1; //Offset Hour
+      break;
+    case 45:
+    case 46: 
+    case 47:
+    case 48: 
+    case 49:
+      _layout->setMatrixTerm(Terms::DREIVIRTEL);
+      h += 1; //Offset Hour
+      break;
+    case 50: 
+    case 51:
+    case 52: 
+    case 53:
+    case 54:
+      _layout->setMatrixTerm(Terms::ZEHN);
+      _layout->setMatrixTerm(Terms::VOR);
+      h += 1; //Offset Hour
+      break;
+    case 55:
+    case 56: 
+    case 57:
+    case 58: 
+    case 59:
+    case 60: 
+    default: break;
+  }
+
+  // Set Hours
+  switch (h % 12u)
+  {
+    case 0: _layout->setMatrixTerm(Terms::ZWOELF); break;
+    case 1: _layout->setMatrixTerm(Terms::EIN); break;
+    case 2: _layout->setMatrixTerm(Terms::ZWEI); break;
+    case 3: _layout->setMatrixTerm(Terms::DREI); break;
+    case 4: _layout->setMatrixTerm(Terms::VIER); break;
+    case 5: _layout->setMatrixTerm(Terms::FUENF); break;
+    case 6: _layout->setMatrixTerm(Terms::SECHS); break;
+    case 7: _layout->setMatrixTerm(Terms::SIEBEN); break;
+    case 8: _layout->setMatrixTerm(Terms::ACHT); break;
+    case 9: _layout->setMatrixTerm(Terms::NEUN); break;
+    case 10: _layout->setMatrixTerm(Terms::ZEHN); break;
+    case 11: _layout->setMatrixTerm(Terms::ELF); break;
+    case 12: _layout->setMatrixTerm(Terms::ZWOELF); break;
+    default: break;
+  }
+
+  _layout->setMatrixTerm(Terms::UHR);
+  
+  
+  //Get matrix and set correspondnding pixels
+  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
+  {
+    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
     {
-      if(layout->getMatrixPixel(x,y) == SET) 
+      if(_layout->getMatrixPixel(x,y) == true) 
       {
+      //  Serial.print("x");
         setPixelColorXY(x,y,Color(100,100,100));
       }
       else 
       {
+        //Serial.print("o");
         setPixelColorXY(x,y,0);
       }
+    }
+   // Serial.println("");
+  }
+  //Serial.println("");
+}
+
+void Wordclock::clearFrame()
+{
+  for(uint8_t x=0; x<_layout->getMatrixCols(); x++){
+    for(uint8_t y=0; y<_layout->getMatrixRows(); y++){
+      _layout->setMatrixPixel(x,y,false);
     }
   }
 }
@@ -113,50 +251,44 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
  */
 void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
 {
-  uint16_t i;
-  
-  if(_matrixSerpentineLayout == false) 
-  {
-    if (_matrixVertical == false) 
-    {
-      i = (y * COLUMNS) + x;
-    } 
-    else 
-    {
-      i = ROWs * (COLUMNS - (x+1))+y;
-    }
-  }
+  uint8_t cols = _layout->getMatrixCols();
+  uint8_t rows = _layout->getMatrixRows();
+  uint16_t maxElements = (cols*rows)-1;
+  uint16_t i = 0;
+  //Serial.print(x);
+  //Serial.print(":");
+  //Serial.println(y);
+  //Serial.println(c);
 
-  if( _matrixSerpentineLayout == true) 
+  if(_matrixSerpentineLayout == true) 
   {
-    if (_matrixVertical == false) 
+    if((_matrixVertical == true) && (_matrixHorizontal == true)) 
     {
       if(y & 0x01) 
       {
-        // Odd rows run backwards
-        uint8_t reverseX = (COLUMNS - 1) - x;
-        i = (y * COLUMNS) + reverseX;
+        // Odd rows
+        i = (maxElements - (rows - x)) + (y * cols);
+        //Serial.print("odd v: ");
+        //Serial.print(i);
+        i -= -2*(5-x);
+        //Serial.print("->odd h: ");
+        //Serial.println(i);
       } 
       else 
       {
-        // Even rows run forwards
-        i = (y * COLUMNS) + x;
+        // Even rows
+        i = (maxElements - (x + (y * cols)));
+        //Serial.print("even v: ");
+        //Serial.print(i);
+        i += -2*(5-x);
+        //Serial.print("->even h: ");
+        //Serial.println(i);
       }
-    } 
-    // vertical positioning
-    else 
-    { 
-      if (x & 0x01) 
-      {
-        i = ROWs * (COLUMNS - (x+1))+y;
-      } 
-      else 
-      {
-        i = ROWs * (COLUMNS - x) - (y+1);
-      }
+      
     }
+    //Serial.println("");
   }
- 
+
   setPixelColor(i, c);
 }
 

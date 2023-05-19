@@ -87,7 +87,6 @@ void setup()
   Serial.println("");
   Serial.println("");
   Serial.println("--------------------------------------");
-  Serial.println("ESP Uhr");
   Serial.print("\nVersion: ");
   Serial.println(GetVersion());
   Serial.printf("Chip ID         : %08X\n", ESP.getChipId());
@@ -212,7 +211,6 @@ void setup()
   // Initialize led strip
   layout = new Layout_De_11x10();
   wordclock = new Wordclock(layout);
-  delete(layout);
 
   wordclock->powerOn();
   delay(100);
@@ -220,6 +218,15 @@ void setup()
   wordclock->clear();
   wordclock->setBrightness(map(50, 0, 255, 0, 100));
   wordclock->show();
+
+  // Countdown
+  for(uint8_t i=12u; i>0u; i--)
+  {
+    wordclock->clear();
+    wordclock->setTime(i,0);
+    wordclock->show();
+    delay(500);
+  }
 }
 
 /**
@@ -256,10 +263,9 @@ void loop()
  */
 void Runnable_100_ms()
 {
-  wordclock->rainbow();
-  wordclock->show();
+  //wordclock->rainbow();
+  
   bootButton.poll();
- // wordclock->setTime(0,0):
 }
 
 /**
@@ -276,6 +282,11 @@ void Runnable_1000_ms()
   
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
+
+  wordclock->clear();
+  wordclock->setTime(dt.Hour(), dt.Minute());
+  wordclock->show();
+  
 }
 
 /**

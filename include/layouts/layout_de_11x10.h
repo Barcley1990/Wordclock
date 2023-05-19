@@ -37,41 +37,207 @@ public:
 
     uint8_t getMatrixCols() override {return _layoutCols;}
 
-    void setMatrixPixel(uint8_t col, uint8_t row, State state) override
+    void setMatrixPixel(uint8_t col, uint8_t row, bool state) override
     {
         if((col>COLUMNS) || (row>ROWS)) return;
-        switch (state) {
-        case SET: _matrixBuffer[row] |= (1<<(COLUMNS-col)); break;
-        case CLEAR: _matrixBuffer[row] &= ~(1<<(COLUMNS-col)); break;
-        default: /*should never be called*/ break;
+        if (state == true) {
+            _matrixBuffer[row] |= (1<<(COLUMNS-col));
+        }else{
+             _matrixBuffer[row] &= ~(1<<(COLUMNS-col));
         }
     }
 
-    State getMatrixPixel(uint8_t col, uint8_t row)
+    bool getMatrixPixel(uint8_t col, uint8_t row)
     {
-        return (State)((_matrixBuffer[row] >> (COLUMNS-col)) & 0x1);
+        return ((_matrixBuffer[row] >> (COLUMNS-col)) & 0x1);
     }
 
-    void setMatrixTime(Terms term) override
+    void setMatrixTerm(Terms term) override
     {
         switch (term)
         {
         case Terms::ESIST:
-            setMatrixPixel(0,0,SET);
-            setMatrixPixel(0,1,SET);
-            setMatrixPixel(0,3,SET);
-            setMatrixPixel(0,4,SET);
-            setMatrixPixel(0,5,SET);
+            setMatrixPixel(0,0,true);
+            setMatrixPixel(1,0,true);
+            setMatrixPixel(3,0,true);
+            setMatrixPixel(4,0,true);
+            setMatrixPixel(5,0,true);
+            Serial.print("ES IST ");
             break;
         case Terms::UHR:
-            setMatrixPixel(9,8,SET);
-            setMatrixPixel(9,9,SET);
-            setMatrixPixel(9,10,SET);
+            setMatrixPixel(8,9,true);
+            setMatrixPixel(9,9,true);
+            setMatrixPixel(10,9,true);
+            Serial.print("UHR ");
             break;
+
+        case Terms::VIRTEL:
+            setMatrixPixel(5,3,true);
+            setMatrixPixel(6,3,true);
+            setMatrixPixel(7,3,true);
+            setMatrixPixel(8,3,true);
+            setMatrixPixel(9,3,true);
+            setMatrixPixel(10,3,true);
+            Serial.print("VIRTEL ");
+        break;
+
+        case Terms::HALB:
+            setMatrixPixel(0,5,true);
+            setMatrixPixel(1,5,true);
+            setMatrixPixel(2,5,true);
+            setMatrixPixel(3,5,true);
+            Serial.print("HALB ");
+        break;
+
+        case Terms::DREIVIRTEL:
+            setMatrixPixel(0,3,true);
+            setMatrixPixel(1,3,true);
+            setMatrixPixel(2,3,true);
+            setMatrixPixel(3,3,true);
+            setMatrixPixel(5,3,true);
+            setMatrixPixel(6,3,true);
+            setMatrixPixel(7,3,true);
+            setMatrixPixel(8,3,true);
+            setMatrixPixel(9,3,true);
+            setMatrixPixel(10,3,true);
+            Serial.print("DREIVIRTEL ");
+        break;
+
+        case Terms::VOR:
+            setMatrixPixel(6,4,true);
+            setMatrixPixel(7,4,true);
+            setMatrixPixel(8,4,true);
+            Serial.print("VOR ");
+        break;
+
+        case Terms::NACH:
+            setMatrixPixel(2,4,true);
+            setMatrixPixel(3,4,true);
+            setMatrixPixel(4,4,true);
+            setMatrixPixel(5,4,true);
+            Serial.print("NACH ");
+        break;
+
+        case Terms::EIN:
+            setMatrixPixel(2,5,true);
+            setMatrixPixel(3,5,true);
+            setMatrixPixel(4,5,true);
+            Serial.print("EIN ");
+        break;
+
+        case Terms::EINS:
+            setMatrixPixel(2,5,true);
+            setMatrixPixel(3,5,true);
+            setMatrixPixel(4,5,true);
+            Serial.print("EINS ");
+        break;
         
+        case Terms::ZWEI:
+            setMatrixPixel(0,6,true);
+            setMatrixPixel(1,6,true);
+            setMatrixPixel(2,6,true);
+            setMatrixPixel(3,6,true);
+            Serial.print("ZWEI ");
+        break;
+
+        case Terms::DREI:
+            setMatrixPixel(0,3,true);
+            setMatrixPixel(1,3,true);
+            setMatrixPixel(2,3,true);
+            setMatrixPixel(3,3,true);
+            Serial.print("DREI ");
+        break;
+
+        case Terms::VIER:
+            setMatrixPixel(7,7,true);
+            setMatrixPixel(8,7,true);
+            setMatrixPixel(9,7,true);
+            setMatrixPixel(10,7,true);
+            Serial.print("VIER ");
+        break;
+
+        case Terms::FUENF:
+            setMatrixPixel(7,0,true);
+            setMatrixPixel(8,0,true);
+            setMatrixPixel(9,0,true);
+            setMatrixPixel(10,0,true);
+            Serial.print("FÜNF ");
+        break;
+
+        case Terms::SECHS:
+            setMatrixPixel(2,9,true);
+            setMatrixPixel(3,9,true);
+            setMatrixPixel(4,9,true);
+            setMatrixPixel(5,9,true);
+            setMatrixPixel(6,9,true);
+            Serial.print("SECHS ");
+        break;
+
+        case Terms::SIEBEN:
+            setMatrixPixel(6,6,true);
+            setMatrixPixel(7,6,true);
+            setMatrixPixel(8,6,true);
+            setMatrixPixel(9,6,true);
+            setMatrixPixel(10,6,true);
+            Serial.print("SIEBEN ");
+        break;
+
+        case Terms::ACHT:
+            setMatrixPixel(1,8,true);
+            setMatrixPixel(2,8,true);
+            setMatrixPixel(3,8,true);
+            setMatrixPixel(4,8,true);
+            Serial.print("ACHT ");
+        break;
+
+        case Terms::NEUN:
+            setMatrixPixel(3,7,true);
+            setMatrixPixel(4,7,true);
+            setMatrixPixel(5,7,true);
+            setMatrixPixel(6,7,true);
+            Serial.print("NEUN ");
+        break;
+
+        case Terms::ZEHN:
+            setMatrixPixel(0,1,true);
+            setMatrixPixel(1,1,true);
+            setMatrixPixel(2,1,true);
+            setMatrixPixel(3,1,true);
+            Serial.print("ZEHN ");
+        break;
+
+        case Terms::ELF:
+            setMatrixPixel(0,7,true);
+            setMatrixPixel(1,7,true);
+            setMatrixPixel(2,7,true);
+            Serial.print("ELF ");
+        break;
+
+        case Terms::ZWOELF:
+            setMatrixPixel(5,5,true);
+            setMatrixPixel(6,5,true);
+            setMatrixPixel(7,5,true);
+            setMatrixPixel(8,5,true);
+            setMatrixPixel(9,5,true);
+            Serial.print("ZWÖLF ");
+        break;
+
+        case Terms::ZWANZIG:
+            setMatrixPixel(4,1,true);
+            setMatrixPixel(5,1,true);
+            setMatrixPixel(6,1,true);
+            setMatrixPixel(7,1,true);
+            setMatrixPixel(8,1,true);
+            setMatrixPixel(9,1,true);
+            setMatrixPixel(10,1,true);
+            Serial.print("ZWANZIG ");
+        break;
+
         default:
+            Serial.print("Error! ");
             break;
         }
+        Serial.println("");
     }
 
 
@@ -81,7 +247,7 @@ private:
     uint8_t _layoutRows;
     uint8_t _layoutCols;
     // max 16 collumns!
-    uint16_t _matrixBuffer[ROWS];
+    uint16_t _matrixBuffer[ROWS] = {0};
     
 };
 

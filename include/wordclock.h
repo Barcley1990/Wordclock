@@ -74,14 +74,6 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 
 #define WS2812_ENABLE_PIN       (MCAL_LED_EN_PIN)
 #define WS2812_DATA_PIN         (MCAL_LED_DIN_PIN)
-#define ROWs                    (10u)
-#define COLUMNS                 (11u)
-#define MINUTE_LEDS             (4u)
-#define AMBILIGHT_LEDS          (0u)
-#define WS2812_MAX_LEDS         ((COLUMNS * ROWs) + MINUTE_LEDS + AMBILIGHT_LEDS)
-#define NUM_OF_WORDS            (21u)
-#define PIXEL_S                 (56u)
-#define ELEMENTS_IN_TEXT_TABLE  (sizeof(LED_Text) / sizeof(LED_Text[0]))
 #define BH1750_ADDR             (0x23u)
 
 #define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
@@ -89,13 +81,14 @@ class Wordclock : public Adafruit_NeoPixel
 {
 private:
     const bool _matrixSerpentineLayout = true;
-    const bool _matrixVertical = false;
+    const bool _matrixVertical = true;
+    const bool _matrixHorizontal = true;
     const uint8_t _matrixAngle = 0u;
     uint8_t _brightness = 30u;
     BH1750* _lightMeter = NULL;
     ThreeWire* _myWire = NULL;
     RtcDS1302<ThreeWire>* _rtc = NULL;
-    ILayout* layout = nullptr;
+    ILayout* _layout = nullptr;
     
     void printDateTime(const RtcDateTime& dt);
     
@@ -109,6 +102,7 @@ public:
 
     // Clock Functions
     void setTime(uint8_t hour, uint8_t minute);
+    void clearFrame();
 
     // LED Functions
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
