@@ -72,15 +72,14 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
   
   //Set min pixels
   if(min > 5u) min -= 5u;
-  if(min > 0u && min < 5u)
+  if((min > 0u) && (min < 5u))
   {
-    for(uint i=(_layout->getMatrixCols()*_layout->getMatrixRows())+1; i<=min; i++)
+    //for(uint8_t i = (_layout->getMatrixCols()*_layout->getMatrixRows()); i<=(i+min); i++)
     {
-      setPixelColor(i + min, Color(100,100,100));
+      setPixelColor(109+min, Color(100,100,100));
     }
-  }
+  } 
   
-
   if(_layout == nullptr) return;
   // Update "matrix" depending on the loaded layout
   clearFrame();
@@ -211,7 +210,6 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
 
   _layout->setMatrixTerm(Terms::UHR);
   
-  
   //Get matrix and set correspondnding pixels
   for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
   {
@@ -219,7 +217,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     {
       if(_layout->getMatrixPixel(x,y) == true) 
       {
-      //  Serial.print("x");
+        //Serial.print("x");
         setPixelColorXY(x,y,Color(100,100,100));
       }
       else 
@@ -228,11 +226,14 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
         setPixelColorXY(x,y,0);
       }
     }
-   // Serial.println("");
+    //Serial.println("");
   }
   //Serial.println("");
 }
 
+/**
+ * 
+*/
 void Wordclock::clearFrame()
 {
   for(uint8_t x=0; x<_layout->getMatrixCols(); x++){
@@ -267,10 +268,9 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
       if(y & 0x01) 
       {
         // Odd rows
-        i = (maxElements - (rows - x)) + (y * cols);
+        i = ((rows-1-y)*cols)+cols-1-x;
         //Serial.print("odd v: ");
         //Serial.print(i);
-        i -= -2*(5-x);
         //Serial.print("->odd h: ");
         //Serial.println(i);
       } 

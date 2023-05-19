@@ -62,13 +62,13 @@ public:
             setMatrixPixel(3,0,true);
             setMatrixPixel(4,0,true);
             setMatrixPixel(5,0,true);
-            Serial.print("ES IST ");
+            //Serial.print("ES IST ");
             break;
         case Terms::UHR:
             setMatrixPixel(8,9,true);
             setMatrixPixel(9,9,true);
             setMatrixPixel(10,9,true);
-            Serial.print("UHR ");
+            //Serial.print("UHR ");
             break;
 
         case Terms::VIRTEL:
@@ -78,7 +78,7 @@ public:
             setMatrixPixel(8,3,true);
             setMatrixPixel(9,3,true);
             setMatrixPixel(10,3,true);
-            Serial.print("VIRTEL ");
+            //Serial.print("VIRTEL ");
         break;
 
         case Terms::HALB:
@@ -86,7 +86,7 @@ public:
             setMatrixPixel(1,5,true);
             setMatrixPixel(2,5,true);
             setMatrixPixel(3,5,true);
-            Serial.print("HALB ");
+            //Serial.print("HALB ");
         break;
 
         case Terms::DREIVIRTEL:
@@ -100,14 +100,14 @@ public:
             setMatrixPixel(8,3,true);
             setMatrixPixel(9,3,true);
             setMatrixPixel(10,3,true);
-            Serial.print("DREIVIRTEL ");
+            //Serial.print("DREIVIRTEL ");
         break;
 
         case Terms::VOR:
             setMatrixPixel(6,4,true);
             setMatrixPixel(7,4,true);
             setMatrixPixel(8,4,true);
-            Serial.print("VOR ");
+            //Serial.print("VOR ");
         break;
 
         case Terms::NACH:
@@ -115,21 +115,21 @@ public:
             setMatrixPixel(3,4,true);
             setMatrixPixel(4,4,true);
             setMatrixPixel(5,4,true);
-            Serial.print("NACH ");
+            //Serial.print("NACH ");
         break;
 
         case Terms::EIN:
             setMatrixPixel(2,5,true);
             setMatrixPixel(3,5,true);
             setMatrixPixel(4,5,true);
-            Serial.print("EIN ");
+            //Serial.print("EIN ");
         break;
 
         case Terms::EINS:
             setMatrixPixel(2,5,true);
             setMatrixPixel(3,5,true);
             setMatrixPixel(4,5,true);
-            Serial.print("EINS ");
+            //Serial.print("EINS ");
         break;
         
         case Terms::ZWEI:
@@ -137,7 +137,7 @@ public:
             setMatrixPixel(1,6,true);
             setMatrixPixel(2,6,true);
             setMatrixPixel(3,6,true);
-            Serial.print("ZWEI ");
+            //Serial.print("ZWEI ");
         break;
 
         case Terms::DREI:
@@ -145,7 +145,7 @@ public:
             setMatrixPixel(1,3,true);
             setMatrixPixel(2,3,true);
             setMatrixPixel(3,3,true);
-            Serial.print("DREI ");
+            //Serial.print("DREI ");
         break;
 
         case Terms::VIER:
@@ -153,7 +153,7 @@ public:
             setMatrixPixel(8,7,true);
             setMatrixPixel(9,7,true);
             setMatrixPixel(10,7,true);
-            Serial.print("VIER ");
+            ///Serial.print("VIER ");
         break;
 
         case Terms::FUENF:
@@ -161,7 +161,7 @@ public:
             setMatrixPixel(8,0,true);
             setMatrixPixel(9,0,true);
             setMatrixPixel(10,0,true);
-            Serial.print("FÜNF ");
+            //Serial.print("FÜNF ");
         break;
 
         case Terms::SECHS:
@@ -170,7 +170,7 @@ public:
             setMatrixPixel(4,9,true);
             setMatrixPixel(5,9,true);
             setMatrixPixel(6,9,true);
-            Serial.print("SECHS ");
+            //Serial.print("SECHS ");
         break;
 
         case Terms::SIEBEN:
@@ -179,7 +179,7 @@ public:
             setMatrixPixel(8,6,true);
             setMatrixPixel(9,6,true);
             setMatrixPixel(10,6,true);
-            Serial.print("SIEBEN ");
+            //Serial.print("SIEBEN ");
         break;
 
         case Terms::ACHT:
@@ -187,7 +187,7 @@ public:
             setMatrixPixel(2,8,true);
             setMatrixPixel(3,8,true);
             setMatrixPixel(4,8,true);
-            Serial.print("ACHT ");
+            //Serial.print("ACHT ");
         break;
 
         case Terms::NEUN:
@@ -195,7 +195,7 @@ public:
             setMatrixPixel(4,7,true);
             setMatrixPixel(5,7,true);
             setMatrixPixel(6,7,true);
-            Serial.print("NEUN ");
+            //Serial.print("NEUN ");
         break;
 
         case Terms::ZEHN:
@@ -203,14 +203,14 @@ public:
             setMatrixPixel(1,1,true);
             setMatrixPixel(2,1,true);
             setMatrixPixel(3,1,true);
-            Serial.print("ZEHN ");
+            //Serial.print("ZEHN ");
         break;
 
         case Terms::ELF:
             setMatrixPixel(0,7,true);
             setMatrixPixel(1,7,true);
             setMatrixPixel(2,7,true);
-            Serial.print("ELF ");
+            //Serial.print("ELF ");
         break;
 
         case Terms::ZWOELF:
@@ -219,7 +219,7 @@ public:
             setMatrixPixel(7,5,true);
             setMatrixPixel(8,5,true);
             setMatrixPixel(9,5,true);
-            Serial.print("ZWÖLF ");
+            //Serial.print("ZWÖLF ");
         break;
 
         case Terms::ZWANZIG:
@@ -230,14 +230,14 @@ public:
             setMatrixPixel(8,1,true);
             setMatrixPixel(9,1,true);
             setMatrixPixel(10,1,true);
-            Serial.print("ZWANZIG ");
+            //Serial.print("ZWANZIG ");
         break;
 
         default:
-            Serial.print("Error! ");
+            //Serial.print("Error! ");
             break;
         }
-        Serial.println("");
+        //Serial.println("");
     }
 
 
