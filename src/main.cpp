@@ -264,9 +264,15 @@ void loop()
 void Runnable_100_ms()
 {
   static uint16_t hue = 0u;
-  hue += 10;
+  static uint8_t value = 0;
+  float lux = wordclock->getAmbBrightness();
+  if(lux != 0.0f) {
+    value = (uint8_t)map((uint8_t)lux,50,400,100,255);
+  }
 
-  wordclock->updateColor(hue, 150, 150);
+  hue += 10;
+  
+  wordclock->updateColor(hue, 150, value);
   wordclock->show();  
   bootButton.poll();
 }
