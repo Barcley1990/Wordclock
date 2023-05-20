@@ -37,6 +37,8 @@ public:
 
     uint8_t getMatrixCols() override {return _layoutCols;}
 
+    void clearMatrix() {std::fill_n(_matrixBuffer, ROWS, 0u);}
+
     void setMatrixPixel(uint8_t col, uint8_t row, bool state) override
     {
         if((col>COLUMNS) || (row>ROWS)) return;
@@ -50,6 +52,11 @@ public:
     bool getMatrixPixel(uint8_t col, uint8_t row)
     {
         return ((_matrixBuffer[row] >> (COLUMNS-col)) & 0x1);
+    }
+
+    bool getMatrixPixel(uint16_t i)
+    {
+        return 0;
     }
 
     void setMatrixTerm(Terms term) override

@@ -39,6 +39,7 @@ Wordclock::~Wordclock()
     delete(_lightMeter);
     delete(_myWire);
     delete(_rtc);
+    delete(_layout);
 };
 
 /**
@@ -211,24 +212,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
   _layout->setMatrixTerm(Terms::UHR);
   
   //Get matrix and set correspondnding pixels
-  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
-  {
-    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
-    {
-      if(_layout->getMatrixPixel(x,y) == true) 
-      {
-        //Serial.print("x");
-        setPixelColorXY(x,y,Color(100,100,100));
-      }
-      else 
-      {
-        //Serial.print("o");
-        setPixelColorXY(x,y,0);
-      }
-    }
-    //Serial.println("");
-  }
-  //Serial.println("");
+  updateColor(_colorHSV);
 }
 
 /**
@@ -236,11 +220,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
 */
 void Wordclock::clearFrame()
 {
-  for(uint8_t x=0; x<_layout->getMatrixCols(); x++){
-    for(uint8_t y=0; y<_layout->getMatrixRows(); y++){
-      _layout->setMatrixPixel(x,y,false);
-    }
-  }
+  _layout->clearMatrix();
 }
 
 /**
@@ -290,6 +270,43 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
   }
 
   setPixelColor(i, c);
+}
+
+void Wordclock::updateColor(uint32_t color)
+{  
+  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
+  {
+    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
+    {
+      if(_layout->getMatrixPixel(x,y) == true) 
+      {
+        setPixelColorXY(x,y,color);
+      }
+      else 
+      {
+        setPixelColorXY(x,y,0);
+      }
+    }
+  }
+}
+
+void Wordclock::updateColor(uint16_t h, uint8_t b, uint8_t v)
+{
+  _colorHSV = gamma32(ColorHSV(h,b,v));
+  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
+  {
+    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
+    {
+      if(_layout->getMatrixPixel(x,y) == true) 
+      {
+        setPixelColorXY(x,y,_colorHSV);
+      }
+      else 
+      {
+        setPixelColorXY(x,y,0);
+      }
+    }
+  }
 }
 
 /**

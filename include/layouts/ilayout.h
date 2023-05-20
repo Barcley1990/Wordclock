@@ -43,6 +43,8 @@ public:
 
     virtual uint8_t getMatrixCols() = 0;
 
+    virtual void clearMatrix() = 0;
+
     virtual void setMatrixPixel(uint8_t col, uint8_t row, bool state) = 0;
 
     virtual bool getMatrixPixel(uint8_t col, uint8_t row) = 0;

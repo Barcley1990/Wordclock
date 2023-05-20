@@ -263,8 +263,11 @@ void loop()
  */
 void Runnable_100_ms()
 {
-  //wordclock->rainbow();
-  
+  static uint16_t hue = 0u;
+  hue += 10;
+
+  wordclock->updateColor(hue, 150, 150);
+  wordclock->show();  
   bootButton.poll();
 }
 

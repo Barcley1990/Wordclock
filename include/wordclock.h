@@ -77,6 +77,17 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define BH1750_ADDR             (0x23u)
 
 #define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
+
+class Color
+{
+public:
+    static const uint16_t RED = 0;
+    static const uint16_t YELLOW = 65536/6;
+    static const uint16_t GREEN = 65536/3;
+    static const uint16_t CYAN = 65536/2;
+    static const uint16_t BLUE = 65536*2/3;
+    static const uint16_t MAGENTA = 65536*5/6;
+};
 class Wordclock : public Adafruit_NeoPixel
 {
 private:
@@ -84,10 +95,13 @@ private:
     const bool _matrixVertical = true;
     const bool _matrixHorizontal = true;
     const uint8_t _matrixAngle = 0u;
-    uint8_t _brightness = 30u;
-    BH1750* _lightMeter = NULL;
-    ThreeWire* _myWire = NULL;
-    RtcDS1302<ThreeWire>* _rtc = NULL;
+    //uint32_t _colorHSV = Color(100,100,100);
+    uint8_t _brightness = 255u;
+    uint8_t _saturation = 150u;
+    uint32_t _colorHSV = gamma32(ColorHSV(Color::MAGENTA, _saturation, _brightness));
+    BH1750* _lightMeter = nullptr;
+    ThreeWire* _myWire = nullptr;
+    RtcDS1302<ThreeWire>* _rtc = nullptr;
     ILayout* _layout = nullptr;
     
     void printDateTime(const RtcDateTime& dt);
@@ -106,6 +120,8 @@ public:
 
     // LED Functions
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
+    void updateColor(uint32_t color);
+    void updateColor(uint16_t h, uint8_t b, uint8_t v);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);
