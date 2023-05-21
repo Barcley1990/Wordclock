@@ -2,12 +2,9 @@
 
 const buttonESPReset = document.getElementById('#btn_esp_rst');
 const buttonLEDPower = document.getElementById('#btn_led_pwr');
-const buttonSliderReset = document.getElementById('#btn_rst_sldr');
-const sliderChannelRed =  document.getElementById('slider1');
-const sliderChannelGreen =  document.getElementById('slider2');
-const sliderChannelBlue =  document.getElementById('slider3');
 
 
+// Reset Button
 if(buttonESPReset) {
     buttonESPReset.addEventListener('click', function() {
         console.log('button clicked');
@@ -17,6 +14,7 @@ if(buttonESPReset) {
     console.log('Button does not exist')
 }
 
+// LED Power Button
 if(buttonLEDPower) {
     buttonLEDPower.addEventListener('click', function() {
         console.log('button clicked');
@@ -26,16 +24,8 @@ if(buttonLEDPower) {
     console.log('Button does not exist')
 }
 
-if(buttonSliderReset) {
-    buttonSliderReset.addEventListener('click', function() {
-        console.log('button clicked');
-        websocket.send('#color_reset');
-    });
-} else {
-    console.log('Button does not exist')
-}
 
-
+//Window Init Function
 function init() {
     console.log('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
     websocket = new WebSocket('ws://'+ window.location.hostname +':81/', ['arduino']);
@@ -70,16 +60,51 @@ function init() {
     };
 }
 
-function updateSliderPWM(element) {
-    var sliderNumber = element.id.charAt(element.id.length-1);
-    var sliderValue = document.getElementById(element.id).value;
-    document.getElementById("sliderValue"+sliderNumber).innerHTML = sliderValue;
-    console.log(sliderValue);
-    websocket.send(sliderNumber+"s"+sliderValue.toString());
-}
+// Colorpicker function
+$(function(){
+    // create canvas and context objects
+    var canvas = document.getElementById('picker');
+    var ctx = canvas.getContext('2d');
 
+    // drawing active image
+    var image = new Image();
 
+    image.src = 'images/colorwheel5.png';
+    //image.crossOrigin = "Anonymous"
 
+    image.onload = function () {
+        // draw the image on the canvas
+        ctx.drawImage(image, 0, 0, image.width, image.height); 
+    }    
+
+    // mouse move handler
+    $('#picker').mousemove(function(e) { 
+        // get coordinates of current position
+        var canvasOffset = $(canvas).offset();
+        var canvasX = Math.floor(e.pageX - canvasOffset.left);
+        var canvasY = Math.floor(e.pageY - canvasOffset.top);
+
+        // get current pixel
+        var imageData = ctx.getImageData(canvasX, canvasY, 1, 1);
+        var pixel = imageData.data;
+
+        // update controls
+        $('#rVal').val(pixel[0]);
+        $('#gVal').val(pixel[1]);
+        $('#bVal').val(pixel[2]);
+        $('#rgbVal').val(pixel[0]+','+pixel[1]+','+pixel[2]);
+
+        var dColor = pixel[2] + 256 * pixel[1] + 65536 * pixel[0];
+        $('#hexVal').val('#' + ('0000' + dColor.toString(16)).substr(-6));
+    });
+
+    // click event handler
+    $('#picker').click(function(e) { 
+        console.log("Selected color: " + $('#hexVal').val);
+    }); 
+});
+
+// Window Load Function
 window.onload = function(event) {
     init();
 }

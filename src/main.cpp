@@ -172,7 +172,10 @@ void setup()
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
     HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
     HtmlServer.serveStatic("/index.js", LittleFS, "/index.js");
+    HtmlServer.serveStatic("/jquery.js", LittleFS, "/jquery.js");
     HtmlServer.serveStatic("/update", LittleFS, "/update.html");
+    HtmlServer.serveStatic("/images/colorwheel5.png", LittleFS, "/images/colorwheel5.png");
+    
 
     // Configure WebSocket Server
     webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
@@ -216,7 +219,7 @@ void setup()
   delay(100);
   wordclock->begin();
   wordclock->clear();
-  wordclock->setBrightness(map(50, 0, 255, 0, 100));
+  wordclock->setBrightness(map(50, 0, 100, 0, 255));
   wordclock->show();
 
   // Countdown
@@ -263,17 +266,6 @@ void loop()
  */
 void Runnable_100_ms()
 {
-  static uint16_t hue = 0u;
-  static uint8_t value = 0;
-  float lux = wordclock->getAmbBrightness();
-  if(lux != 0.0f) {
-    value = (uint8_t)map((uint8_t)lux,50,400,100,255);
-  }
-
-  hue += 10;
-  
-  wordclock->updateColor(hue, 150, value);
-  wordclock->show();  
   bootButton.poll();
 }
 
@@ -283,7 +275,14 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  String ambBrightness = (String)wordclock->getAmbBrightness();
+  static uint16_t hue = 0u;
+  static uint8_t value = 0;
+  float lux = wordclock->getAmbBrightness();
+  if(lux != 0.0f) {
+    value = (uint8_t)map((uint8_t)lux,50,400,100,255);
+  }
+
+  String ambBrightness = (String)lux;
   RtcDateTime dt = wordclock->getRTCDateTime();
   char datetimeBuffer[25] = "";
   sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
@@ -292,10 +291,12 @@ void Runnable_1000_ms()
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
 
+  // change color over time
+  hue += 100;
+  wordclock->updateColor(hue, 150, value);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
-  
 }
 
 /**

@@ -77,7 +77,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
   {
     //for(uint8_t i = (_layout->getMatrixCols()*_layout->getMatrixRows()); i<=(i+min); i++)
     {
-      setPixelColor(109+min, Color(100,100,100));
+      setPixelColor(109+min, _colorHSV);
     }
   } 
   
