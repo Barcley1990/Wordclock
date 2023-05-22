@@ -51,6 +51,7 @@ ul li:hover a{
   position: absolute;
   bottom: 10px;
   padding-left: 10px;
+  display: inline;
 }
 
 .button {

@@ -52,6 +52,10 @@ function init() {
                 console.log(key); console.log(JSONObj[key]);
                 document.getElementById(key).innerHTML = JSONObj[key];
             }
+            else if(key == 'version') {
+                console.log[key]; console.log(JSONObj[key]);
+                document.getElementById(key).innerHTML = ('Version: ' + JSONObj[key]);
+            }
             else {
                 document.getElementById(key).innerHTML = JSONObj[key];
                 document.getElementById("slider"+ (i+1).toString()).value = JSONObj[key];
@@ -100,7 +104,11 @@ $(function(){
 
     // click event handler
     $('#picker').click(function(e) { 
-        console.log("Selected color: " + $('#hexVal').val);
+        let data = {'#color' : dColor};
+        const JSONObj = JSON.parse(data);
+        console.log(JSONObj);
+
+        websocket.send(JSONObj);
     }); 
 });
 
