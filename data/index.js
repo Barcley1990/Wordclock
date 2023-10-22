@@ -1,68 +1,107 @@
+/** 
+ * Wordclock Java Script
+*/
 
 
-const buttonESPReset = document.getElementById('#btn_esp_rst');
-const buttonLEDPower = document.getElementById('#btn_led_pwr');
+var buttonState = false;
+var debug = true;
+var colorPicker;
+
+// commands
+var COMMAND_RESET = 20;
+var COMMAND_SET_BRIGHTNESS = 95;
+var COMMAND_SET_LEDPWROFF = 96;
 
 
-// Reset Button
-if(buttonESPReset) {
-    buttonESPReset.addEventListener('click', function() {
-        console.log('button clicked');
-        websocket.send('#esp_reset');
-    });
-} else {
-    console.log('Button does not exist')
+
+
+
+
+
+/**
+ * Function definitions
+ */
+/* eslint-disable no-console */
+function debugMessage(debugMessage, someObject) {
+	if (debug === true) {
+
+		if (console !== undefined) {
+			if (someObject) {
+				console.log(debugMessage, someObject);
+			} else {
+				console.log(debugMessage);
+			}
+		}
+
+		$("#output").text("debugMessage");
+	}
 }
 
-// LED Power Button
-if(buttonLEDPower) {
-    buttonLEDPower.addEventListener('click', function() {
-        console.log('button clicked');
-        websocket.send('#pwr_on_off');
-    });
-} else {
-    console.log('Button does not exist')
-}
-
-
-//Window Init Function
-function init() {
-    console.log('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
+function initWebsocket() {
+    debugMessage('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
     websocket = new WebSocket('ws://'+ window.location.hostname +':81/', ['arduino']);
 
-    websocket.onopen = function() {
-        console.log('Open connection');
+    websocket.onopen = function(event) {
+        debugMessage("The connection with the websocket has been established.", event);
     };
 
-    websocket.onclose = function() {
-        console.log('Close connection');
+    websocket.onclose = function(event) {
+        debugMessage("The connection with the websocket was closed (code " + event.code + ").", event);
     };
 
     websocket.onmessage = function(event) {
-        var JSONObj = JSON.parse(event.data);
-        var keys = Object.keys(JSONObj);
+        var data = JSON.parse(event.data);
+        
+        debugMessage("WebSocket response arrived (command " + data.command + ").", data);
 
-        for (var i = 0; i < keys.length; i++){
-            var key = keys[i];
-            if(key == 'Light') {
-                console.log(key); console.log(JSONObj[key]);
-                document.getElementById(key).innerHTML = JSONObj[key];
-            }
-            else if(key == 'Time') {
-                console.log(key); console.log(JSONObj[key]);
-                document.getElementById(key).innerHTML = JSONObj[key];
-            }
-            else if(key == 'version') {
-                console.log[key]; console.log(JSONObj[key]);
-                document.getElementById(key).innerHTML = ('Version: ' + JSONObj[key]);
-            }
-            else {
-                document.getElementById(key).innerHTML = JSONObj[key];
-                document.getElementById("slider"+ (i+1).toString()).value = JSONObj[key];
-            } 
+        if(data.command === "version") {
+            $("#version").set("value", data.version);
+        }
+
+        if(data.command === "ldr") {
+            $("#ldr").set("value", data.ldr);
+        }
+
+        if(data.command === "time") {
+            
         }
     };
+
+    websocket.onerror = function(event) {
+		debugMessage("An error occurred while connecting to the websocket.", event);
+	};
 }
+
+function nstr5(number) {
+	return Math.round(number).toString().padStart(5, "0");
+}
+
+function nstr(number) {
+	return Math.round(number).toString().padStart(3, "0");
+}
+
+function getPaddedString(string, maxStringLength) {
+	return string.padEnd(maxStringLength, " ");
+}
+
+function websocketSend(command, addData = "") {
+	var data = nstr(command) + addData + "999";
+	debugMessage("Send data: '" + data + "'");
+	websocket.send(data);
+}
+
+$(document).ready(function() {
+    
+    initWebsocket();
+
+    $("#btnEspReset").on("click", function() {
+        websocketSend(COMMAND_RESET);debugMessage("Send");
+    });
+
+    $("#btnLedPwr").click(function() {
+        websocketSend(COMMAND_SET_LEDPWROFF);debugMessage("Send");
+    });
+});
 
 // Colorpicker function
 $(function(){
@@ -99,23 +138,23 @@ $(function(){
         $('#rgbVal').val(pixel[0]+','+pixel[1]+','+pixel[2]);
 
         var dColor = pixel[2] + 256 * pixel[1] + 65536 * pixel[0];
+        colorPicker = dColor;
         $('#hexVal').val('#' + ('0000' + dColor.toString(16)).substr(-6));
     });
 
     // click event handler
     $('#picker').click(function(e) { 
-        let data = {'#color' : dColor};
-        const JSONObj = JSON.parse(data);
-        console.log(JSONObj);
-
-        websocket.send(JSONObj);
+        var data = {'#color' : colorPicker};
+        if (websocket.readyState !== WebSocket.CLOSED) {
+            websocket.send(data);
+        }
+        else {
+            console.log("Websocket not ready yet");
+        }
     }); 
 });
 
-// Window Load Function
-window.onload = function(event) {
-    init();
-}
+
 
 
 

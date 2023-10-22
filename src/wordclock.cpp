@@ -12,7 +12,7 @@
  * Include area
  ***********************************************************************************************************************/
 #include "wordclock.h"
-
+#include <NTPClient.h>
 
 
 /***********************************************************************************************************************
@@ -32,6 +32,7 @@ Wordclock::Wordclock(ILayout* layout) :
         Serial.println(F("Error initialising BH1750"));
     _rtc->Begin();
     _layout = layout;
+
 }
 Wordclock::~Wordclock()
 {

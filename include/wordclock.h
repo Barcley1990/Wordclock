@@ -126,6 +126,9 @@ public:
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);
     RtcDateTime getRTCDateTime();
+
+    // NTP
+    void getNTPDateTime();
     
     // LDR Functions
     float getAmbBrightness();

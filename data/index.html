@@ -16,8 +16,6 @@
 				<ul>
 				 <li><a href="/index"><i class="fas fa-qrcode"></i>Dashboard</a></li>
 				 <li><a href="/update"><i class="fas fa-link"></i>Update</a></li>
-				 <li><a href="/about"><i class="far fa-question-circle"></i>About</a></li>
-				 <li><a href="/contact"><i class="far fa-envelope"></i>Contact</a></li>
 				</ul>
 				<a class="version" id="version"></a>
 			</div>
@@ -29,16 +27,16 @@
 				</section>
 				<div>
 					<p class="inline">Current RTC time: </p>
-					<p class="inline" id="Time"></p>
+					<p class="inline" id="time"></p>
 				</div>
 				<div>
 					<p class="inline"> Current ambient brightness:</p>
-					<p class="inline" id="Light"></p>
+					<p class="inline" id="ldr"></p>
 					<p class="inline"> Lux</p>
 				</div>
 				
-				<button class="button" type='button' id='#btn_esp_rst'>Reset ESP</button>
-				<button class="button" type='button' id='#btn_led_pwr'>Turn Power Off</button>
+				<button class="button" type='button' id='btEspReset'>Reset ESP</button>
+				<button class="button" type='button' id='btnLedPwr'>Turn Power Off</button>
 
 				<br><br>
 				
@@ -55,12 +53,18 @@
 						<div><label>HEX</label> <input type="text" id="hexVal" /></div>
 					</div>
 				</div>
+
+				<br><br>
+
+				<div>
+                    <p id="output"></div>
+                </div>
 			</div>
-			
+
 		</div>
 
 		<script type="text/javascript" src="jquery.js"></script>
-		<script type="text/javascript" src="index.js"></script>     
+		<script type="text/javascript" src="index.js"></script>
 	</BODY>
 
 

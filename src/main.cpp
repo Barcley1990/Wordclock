@@ -29,9 +29,10 @@
 #include <WebSocketsServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJSON.h>
 #include <RtcDateTime.h>
-
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 
 /***********************************************************************************************************************
  * Private Variables
@@ -61,6 +62,16 @@ ESP8266HTTPUpdateServer OTAServer;
 ILayout* layout;
 Wordclock* wordclock;
 Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
+// Define NTP Client to get time
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+
+//Week Days
+String weekDays[7]={"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+
+//Month names
+String months[12]={"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
+
 
 /***********************************************************************************************************************
  * Function definitions
@@ -178,7 +189,9 @@ void setup()
     
 
     // Configure WebSocket Server
+    
     webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
+      String version = GetVersion();
       switch (type)
       {
       case WStype_DISCONNECTED:
@@ -186,11 +199,19 @@ void setup()
         break;
       case WStype_CONNECTED:
         Serial.println("Client Connected");
+        WebSocketSend("version", &version);
         break;
       case WStype_TEXT:
         Serial.print("Data Received: ");
         WebSocketReceive(payload, length);
         break;
+        //-Do Nothing-
+      case WStype_BIN:
+      case WStype_ERROR:
+      case WStype_FRAGMENT_TEXT_START:
+      case WStype_FRAGMENT_BIN_START:
+      case WStype_FRAGMENT:
+      case WStype_FRAGMENT_FIN:
       default:
         break;
       }
@@ -211,6 +232,16 @@ void setup()
   }
   WiFi_Setup_Successful = true;
 
+  // Initialize a NTPClient to get time
+  timeClient.begin();
+  // Set offset time in seconds to adjust for your timezone, for example:
+  // GMT +1 = 3600
+  // GMT +8 = 28800
+  // GMT -1 = -3600
+  // GMT 0 = 0
+  timeClient.setTimeOffset(3600);
+  timeClient.update();
+
   // Initialize led strip
   layout = new Layout_De_11x10();
   wordclock = new Wordclock(layout);
@@ -225,11 +256,15 @@ void setup()
   // Countdown
   for(uint8_t i=12u; i>0u; i--)
   {
-    wordclock->clear();
-    wordclock->setTime(i,0);
-    wordclock->show();
-    delay(500);
+  //  wordclock->clear();
+  //  wordclock->setTime(i,0);
+  //  wordclock->show();
+  //  delay(500);
   }
+
+  RtcDateTime dt;
+  dt.InitWithNtp32Time(timeClient.getEpochTime());
+  wordclock->setRTCDateTime(dt);
 }
 
 /**
@@ -281,6 +316,8 @@ void Runnable_1000_ms()
   if(lux != 0.0f) {
     value = (uint8_t)map((uint8_t)lux,50,400,100,255);
   }
+  //
+  value = 255;
 
   String ambBrightness = (String)lux;
   RtcDateTime dt = wordclock->getRTCDateTime();
@@ -307,35 +344,57 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
+  // Allocate memory on the stack
+  const uint8_t size = JSON_OBJECT_SIZE(1);
+  StaticJsonDocument<25> doc;
   String data;
 
+  // capture incoming data
   for(uint8_t i=0; i<length; i++) {
     data += *(char*)payload++;
   }
-  Serial.println(data);
 
-  if(data == "#esp_reset") {
+  // parse json string
+  DeserializationError error = deserializeJson(doc, data);
+
+  // Test if parsing succeeded.
+  if (error) {
+    Serial.print("deserializeJson() failed: ");
+    Serial.println(error.f_str());
+    return;
+  }
+  
+  // Check for contained keys
+  if(doc.containsKey("#esp_reset")) {
+    wordclock->powerOff();
+    delay(100);
     ESP.reset();
   }
-  else if(data == "pwr_on_off") {
-    Serial.println("Turn Leds on/off");
-    wordclock->powerOff();
+
+  // Check for contained keys
+  if(doc.containsKey("#pwr_on_off")) {
+     doc["#pwr_on_off"] ? wordclock->powerOn() : wordclock->powerOff();
   }
-  else if(data == "color_reset") {
-    Serial.println("Reset Color"); 
+
+  if(doc.containsKey("#color")) {
+    uint32_t color = doc["#color"];
+    wordclock->updateColor(color);
   }
 
 }
 
 void WebSocketSend(String key, const void* data)
 {
-  JSONVar objects;
+  // Allocate memory on the stack
+  //const uint8_t size = JSON_OBJECT_SIZE(1);
+  StaticJsonDocument<25> doc;
   String jsonString;
 
   // Build JSON object
-  objects[key] = *(String*)data;;
-  jsonString = JSON.stringify(objects);
+  doc[key] = *(String*)data;
 
+  serializeJson(doc, jsonString);
+  
   // Broadcast to all websocket clients
   webSocket.broadcastTXT(jsonString);
 }

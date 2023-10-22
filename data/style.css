@@ -134,3 +134,11 @@ ul li:hover a{
   text-transform: uppercase;
   width: 75px;
 }
+.box-debug {
+  overflow: hidden;
+  overflow-wrap: break-word;
+}
+
+.box-debug > div{
+  font-family: monospace;
+}
