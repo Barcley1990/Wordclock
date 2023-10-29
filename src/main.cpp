@@ -2,12 +2,12 @@
 /**********************************************************************************************************************
  * @file main.cpp
  * @author Tobias Nuß
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2023-04-06
- * 
+ *
  * @copyright Copyright (c) 2023
- * 
+ *
  ***********************************************************************************************************************/
 
 /***********************************************************************************************************************
@@ -25,14 +25,16 @@
 #include <ESP8266WebServer.h>
 #include <DNSServer.h>
 #include <ESP8266mDNS.h>
-#include <WiFiManager.h>  
+#include <WiFiManager.h>
 #include <WebSocketsServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 #include <RtcDateTime.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
+
+#define WORDCLOCK_USE_WIFI (false)
 
 /***********************************************************************************************************************
  * Private Variables
@@ -79,7 +81,7 @@ String months[12]={"January", "February", "March", "April", "May", "June", "July
 /**
  * @brief Main init funciton. Called only once from within main
 */
-void setup() 
+void setup()
 {
   // Initialize GPIOs
   pinMode(MCAL_WIFI_EN_PIN, INPUT);
@@ -129,24 +131,26 @@ void setup()
   delay(100);
 
 
+#if (WORDCLOCK_USE_WIFI == true)
   // Initialize LittleFS
-  Serial.print("Try to initialize LittleFS ");
+  Serial.print("Try to initialize LittleFS... ");
   //LittleFS.format();
   if (!LittleFS.begin())
   {
-    Serial.println("->An error has occurred while mounting LittleFS. End Setup!");
+    Serial.println("-> An error has occurred while mounting LittleFS. End Setup!\n");
     return;
   }
   else
   {
-    Serial.println("->LittleFS mounted successfully");
+    Serial.println("-> LittleFS mounted successfully\n");
   }
+
 
   // Setup Wifi manager
   WiFiManager wifiManager;
   //wifiManager.setSTAStaticIPConfig(local_IP, gateway, subnet);
   //wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
-  wifiManager.setConnectTimeout(5);
+  wifiManager.setConnectTimeout(10u);
   wifiManager.setSaveConfigCallback([](){
     Serial.println("WiIi Settings have been changed!");
   });
@@ -154,12 +158,12 @@ void setup()
   // Automatically connect using saved credentials,
   // if connection fails, it starts an access point with the specified name,
   // then goes into a blocking loop awaiting configuration and will return success result
-  if(!wifiManager.autoConnect("ESP8266_Wordclock")) 
+  if(!wifiManager.autoConnect("ESP8266_Wordclock"))
   {
     Serial.println("Failed to connect!");
     return;
-  } 
-  else 
+  }
+  else
   {
     // Successful connected to local wifi...
     Serial.print("Successfully connected! IP is: ");
@@ -186,10 +190,9 @@ void setup()
     HtmlServer.serveStatic("/jquery.js", LittleFS, "/jquery.js");
     HtmlServer.serveStatic("/update", LittleFS, "/update.html");
     HtmlServer.serveStatic("/images/colorwheel5.png", LittleFS, "/images/colorwheel5.png");
-    
+
 
     // Configure WebSocket Server
-    
     webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
       String version = GetVersion();
       switch (type)
@@ -229,10 +232,12 @@ void setup()
 
     Serial.print("HTTP server started on port 80: ");
     Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
+    WiFi_Setup_Successful = true;
   }
-  WiFi_Setup_Successful = true;
+#endif
 
-  // Initialize a NTPClient to get time
+#if (WORDCLOCK_USE_WIFI == true)
+  // Initialize a NTPClient to get actual time
   timeClient.begin();
   // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
@@ -240,7 +245,23 @@ void setup()
   // GMT -1 = -3600
   // GMT 0 = 0
   timeClient.setTimeOffset(3600);
+  // Update once here. Up to now it is updated every 60seconds
   timeClient.update();
+
+  // Update RTC with server time
+  RtcDateTime dt;
+  dt.InitWithNtp32Time(timeClient.getEpochTime());
+  wordclock->setRTCDateTime(dt);
+
+  // -->DEBUG
+  Serial.print("Time ");
+  Serial.print(dt.Hour());
+  Serial.print(":");
+  Serial.print(dt.Minute());
+  Serial.print(":");
+  Serial.print(dt.Second());
+  Serial.print("\n");
+#endif
 
   // Initialize led strip
   layout = new Layout_De_11x10();
@@ -252,40 +273,28 @@ void setup()
   wordclock->clear();
   wordclock->setBrightness(map(50, 0, 100, 0, 255));
   wordclock->show();
-
-  // Countdown
-  for(uint8_t i=12u; i>0u; i--)
-  {
-  //  wordclock->clear();
-  //  wordclock->setTime(i,0);
-  //  wordclock->show();
-  //  delay(500);
-  }
-
-  RtcDateTime dt;
-  dt.InitWithNtp32Time(timeClient.getEpochTime());
-  wordclock->setRTCDateTime(dt);
 }
 
 /**
  * @brief Main loop  function. Called from main()
  */
-void loop() 
+void loop()
 {
   uint32_t sys_time = millis();
 
   // check if 100ms passed
-  if ((uint32_t)(sys_time - old_time_100) >= 100u) {    
+  if ((uint32_t)(sys_time - old_time_100) >= 100u) {
     old_time_100 = sys_time;
     Runnable_100_ms();
   }
 
   // check if 1000ms passed
-  if ((uint32_t)(sys_time - old_time_1000) >= 1000u) {    
+  if ((uint32_t)(sys_time - old_time_1000) >= 1000u) {
     old_time_1000 = sys_time;
     Runnable_1000_ms();
   }
 
+#if (WORDCLOCK_USE_WIFI == true)
   // Execute Server Objects
   if(WiFi_Setup_Successful == true)
   {
@@ -293,11 +302,12 @@ void loop()
     webSocket.loop();
     MDNS.update();
   }
+#endif
 }
 
 /**
  * @brief called every 100ms
- * 
+ *
  */
 void Runnable_100_ms()
 {
@@ -306,27 +316,39 @@ void Runnable_100_ms()
 
 /**
  * @brief called every 1000ms
- * 
+ *
  */
 void Runnable_1000_ms()
 {
   static uint16_t hue = 0u;
-  static uint8_t value = 0;
+  static uint8_t value = 0u;
   float lux = wordclock->getAmbBrightness();
   if(lux != 0.0f) {
     value = (uint8_t)map((uint8_t)lux,50,400,100,255);
   }
-  //
-  value = 255;
+  value = 0xFFu;
 
-  String ambBrightness = (String)lux;
+  // Read RTC time
   RtcDateTime dt = wordclock->getRTCDateTime();
-  char datetimeBuffer[25] = "";
-  sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d", 
+
+  // Convert date-time to send to html server
+  char datetimeBuffer[25u] = "";
+  sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d",
     dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
-  
+
+  // Send data to html server
+  String ambBrightness = (String)lux;
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
+
+  // -->DEBUG
+  Serial.print("Time ");
+  Serial.print(dt.Hour());
+  Serial.print(":");
+  Serial.print(dt.Minute());
+  Serial.print(":");
+  Serial.print(dt.Second());
+  Serial.print("\n");
 
   // change color over time
   hue += 100;
@@ -337,71 +359,24 @@ void Runnable_1000_ms()
 }
 
 /**
- * @brief 
- * 
- * @param payload 
- * @param length 
+ * @brief
+ *
+ * @param payload
+ * @param length
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
-  // Allocate memory on the stack
-  const uint8_t size = JSON_OBJECT_SIZE(1);
-  StaticJsonDocument<25> doc;
-  String data;
-
-  // capture incoming data
-  for(uint8_t i=0; i<length; i++) {
-    data += *(char*)payload++;
-  }
-
-  // parse json string
-  DeserializationError error = deserializeJson(doc, data);
-
-  // Test if parsing succeeded.
-  if (error) {
-    Serial.print("deserializeJson() failed: ");
-    Serial.println(error.f_str());
-    return;
-  }
-  
-  // Check for contained keys
-  if(doc.containsKey("#esp_reset")) {
-    wordclock->powerOff();
-    delay(100);
-    ESP.reset();
-  }
-
-  // Check for contained keys
-  if(doc.containsKey("#pwr_on_off")) {
-     doc["#pwr_on_off"] ? wordclock->powerOn() : wordclock->powerOff();
-  }
-
-  if(doc.containsKey("#color")) {
-    uint32_t color = doc["#color"];
-    wordclock->updateColor(color);
-  }
 
 }
 
 void WebSocketSend(String key, const void* data)
 {
-  // Allocate memory on the stack
-  //const uint8_t size = JSON_OBJECT_SIZE(1);
-  StaticJsonDocument<25> doc;
-  String jsonString;
 
-  // Build JSON object
-  doc[key] = *(String*)data;
-
-  serializeJson(doc, jsonString);
-  
-  // Broadcast to all websocket clients
-  webSocket.broadcastTXT(jsonString);
 }
 
 /**
  * @brief Callback for boot pin
- * 
+ *
  */
 void BootPinCbk()
 {
@@ -413,13 +388,13 @@ void BootPinCbk()
 
 /**
  * @brief Get the Version object
- * 
- * @return String 
+ *
+ * @return String
  */
 String GetVersion()
 {
   return (String)(
-      String(SOFTWARE_VERSION_MAYOR)+ "." + 
-      String(SOFTWARE_VERSION_MINOR)+ "." + 
+      String(SOFTWARE_VERSION_MAYOR)+ "." +
+      String(SOFTWARE_VERSION_MINOR)+ "." +
       String(SOFTWARE_VERSION_PATCH));
 }
