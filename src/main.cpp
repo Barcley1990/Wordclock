@@ -87,6 +87,9 @@ void setup()
   pinMode(MCAL_WIFI_EN_PIN, INPUT);
   pinMode(MCAL_BOOT_PIN, INPUT);
   pinMode(MCAL_LED_EN_PIN, OUTPUT);
+  pinMode(MCAL_DAT_PIN,OUTPUT);
+  pinMode(MCAL_CLK_PIN,OUTPUT);
+  pinMode(MCAL_RST_PIN,OUTPUT);
   digitalWrite(MCAL_LED_EN_PIN, LOW);
 
   // Start serial inteface
