@@ -29,12 +29,11 @@
 #include <WebSocketsServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
-#include <ArduinoJson.h>
 #include <RtcDateTime.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
-#define WORDCLOCK_USE_WIFI (false)
+#define WORDCLOCK_USE_WIFI (true)
 
 /***********************************************************************************************************************
  * Private Variables
@@ -254,6 +253,7 @@ void setup()
   // Update RTC with server time
   RtcDateTime dt;
   dt.InitWithNtp32Time(timeClient.getEpochTime());
+
   wordclock->setRTCDateTime(dt);
 
   // -->DEBUG
@@ -327,7 +327,7 @@ void Runnable_1000_ms()
   static uint8_t value = 0u;
   float lux = wordclock->getAmbBrightness();
   if(lux != 0.0f) {
-    value = (uint8_t)map((uint8_t)lux,50,400,100,255);
+    //value = (uint8_t)map((uint8_t)lux,50,400,100,255);
   }
   value = 0xFFu;
 
