@@ -29,6 +29,7 @@
 #include <WebSocketsServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
+#include <Arduino_JSON.h>
 #include <RtcDateTime.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
@@ -372,12 +373,36 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
+  String data;
 
+  for(uint8_t i=0; i<length; i++) {
+    data += *(char*)payload++;
+  }
+  Serial.println(data);
+
+  if(data == "#esp_reset") {
+    ESP.reset();
+  }
+  else if(data == "pwr_on_off") {
+    Serial.println("Turn Leds on/off");
+    wordclock->powerOff();
+  }
+  else if(data == "color_reset") {
+    Serial.println("Reset Color"); 
+  }
 }
 
 void WebSocketSend(String key, const void* data)
 {
+  JSONVar objects;
+  String jsonString;
 
+  // Build JSON object
+  objects[key] = *(String*)data;;
+  jsonString = JSON.stringify(objects);
+
+  // Broadcast to all websocket clients
+  webSocket.broadcastTXT(jsonString);
 }
 
 /**
