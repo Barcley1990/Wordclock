@@ -16,9 +16,12 @@ enum class Terms {
     EINE,
     EINS,
     ZWEI,
-    DREI,
-    VIER,
-    FUENF,
+    DREI_1,
+    DREI_2,
+    VIER_1,
+    VIER_2,
+    FUENF_1,
+    FUENF_2,
     SECHS,
     SIEBEN,
     ACHT,
@@ -32,7 +35,7 @@ enum class Terms {
 class ILayout
 {
 private:
-   
+
 
 public:
     ILayout(/* args */) = default;

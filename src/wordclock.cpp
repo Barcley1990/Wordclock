@@ -75,15 +75,19 @@ void Wordclock::powerOn()
 void Wordclock::setTime(uint8_t h, uint8_t m)
 {
   uint8_t min = m % 10u;
+  uint8_t rows = _layout->getMatrixRows();
+  uint8_t cols = _layout->getMatrixCols();
+  uint8_t numleds = rows * cols;
 
   //Set min pixels
   if(min > 5u) min -= 5u;
-  if((min > 0u) && (min < 5u))
+  switch (min)
   {
-    //for(uint8_t i = (_layout->getMatrixCols()*_layout->getMatrixRows()); i<=(i+min); i++)
-    {
-      setPixelColor(109+min, _colorHSV);
-    }
+    case 4: setPixelColor(numleds+3, _colorHSV);
+    case 3: setPixelColor(numleds+2, _colorHSV);
+    case 2: setPixelColor(numleds+1, _colorHSV);
+    case 1: setPixelColor(numleds, _colorHSV);
+    default: break;
   }
 
   if(_layout == nullptr) return;
@@ -104,7 +108,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 7:
     case 8:
     case 9:
-      _layout->setMatrixTerm(Terms::FUENF);
+      _layout->setMatrixTerm(Terms::FUENF_1);
       _layout->setMatrixTerm(Terms::NACH);
       break;
     case 10:
@@ -136,7 +140,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 27:
     case 28:
     case 29:
-      _layout->setMatrixTerm(Terms::FUENF);
+      _layout->setMatrixTerm(Terms::FUENF_1);
       _layout->setMatrixTerm(Terms::VOR);
       _layout->setMatrixTerm(Terms::HALB);
       h += 1; //Offset Hour
@@ -154,7 +158,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 37:
     case 38:
     case 39:
-      _layout->setMatrixTerm(Terms::FUENF);
+      _layout->setMatrixTerm(Terms::FUENF_1);
       _layout->setMatrixTerm(Terms::NACH);
       _layout->setMatrixTerm(Terms::HALB);
       h += 1; //Offset Hour
@@ -201,9 +205,9 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 0: _layout->setMatrixTerm(Terms::ZWOELF); break;
     case 1: _layout->setMatrixTerm(Terms::EIN); break;
     case 2: _layout->setMatrixTerm(Terms::ZWEI); break;
-    case 3: _layout->setMatrixTerm(Terms::DREI); break;
-    case 4: _layout->setMatrixTerm(Terms::VIER); break;
-    case 5: _layout->setMatrixTerm(Terms::FUENF); break;
+    case 3: _layout->setMatrixTerm(Terms::DREI_2); break;
+    case 4: _layout->setMatrixTerm(Terms::VIER_2); break;
+    case 5: _layout->setMatrixTerm(Terms::FUENF_2); break;
     case 6: _layout->setMatrixTerm(Terms::SECHS); break;
     case 7: _layout->setMatrixTerm(Terms::SIEBEN); break;
     case 8: _layout->setMatrixTerm(Terms::ACHT); break;

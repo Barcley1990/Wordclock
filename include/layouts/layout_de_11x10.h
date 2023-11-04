@@ -2,16 +2,16 @@
 #define _LAYOUT_DE_11X10_H
 
 /*************************************************************
-E S K I S T L F Ü N F    ==> ES IST FÜNF        
-Z E H N Z W A N Z I G    ==> ZEHN ZWANZIG       
-D R E I V I E R T E L    ==> DREI|VIERTEL       
-T G N A C H V O R J M    ==> NACH VOR           
-H A L B Q Z W Ö L F P    ==> HALB ZWÖLF         
-Z W E I N S I E B E N    ==> ZW|EI|N|S|IEBEN    
-K D R E I R H F Ü N F    ==> DREI FÜNF          
-E L F N E U N V I E R    ==> ELF NEUN VIER      
-W A C H T Z E H N R S    ==> ACHT ZEHN          
-B S E C H S F M U H R    ==> SECHS UHR        
+E S K I S T L F Ü N F    ==> ES IST FÜNF
+Z E H N Z W A N Z I G    ==> ZEHN ZWANZIG
+D R E I V I E R T E L    ==> DREI|VIERTEL
+T G N A C H V O R J M    ==> NACH VOR
+H A L B Q Z W Ö L F P    ==> HALB ZWÖLF
+Z W E I N S I E B E N    ==> ZW|EI|N|S|IEBEN
+K D R E I R H F Ü N F    ==> DREI FÜNF
+E L F N E U N V I E R    ==> ELF NEUN VIER
+W A C H T Z E H N R S    ==> ACHT ZEHN
+B S E C H S F M U H R    ==> SECHS UHR
 **************************************************************/
 #include "ilayout.h"
 
@@ -19,8 +19,6 @@ B S E C H S F M U H R    ==> SECHS UHR
 #define COLUMNS                 (11u)
 #define MINUTE_LEDS             (4u)
 #define NUM_LEDS                ((COLUMNS * ROWS) + MINUTE_LEDS)
-
-#define TERMS_DE_NUM (21u)
 
 // Interface Implementor
 class Layout_De_11x10 : public ILayout
@@ -79,49 +77,50 @@ public:
             break;
 
         case Terms::VIRTEL:
-            setMatrixPixel(5,3,true);
-            setMatrixPixel(6,3,true);
-            setMatrixPixel(7,3,true);
-            setMatrixPixel(8,3,true);
-            setMatrixPixel(9,3,true);
-            setMatrixPixel(10,3,true);
+            setMatrixPixel(4,2,true);
+            setMatrixPixel(5,2,true);
+            setMatrixPixel(6,2,true);
+            setMatrixPixel(7,2,true);
+            setMatrixPixel(8,2,true);
+            setMatrixPixel(9,2,true);
+            setMatrixPixel(10,2,true);
             //Serial.print("VIRTEL ");
         break;
 
         case Terms::HALB:
-            setMatrixPixel(0,5,true);
-            setMatrixPixel(1,5,true);
-            setMatrixPixel(2,5,true);
-            setMatrixPixel(3,5,true);
+            setMatrixPixel(0,4,true);
+            setMatrixPixel(1,4,true);
+            setMatrixPixel(2,4,true);
+            setMatrixPixel(3,4,true);
             //Serial.print("HALB ");
         break;
 
         case Terms::DREIVIRTEL:
-            setMatrixPixel(0,3,true);
-            setMatrixPixel(1,3,true);
-            setMatrixPixel(2,3,true);
-            setMatrixPixel(3,3,true);
-            setMatrixPixel(5,3,true);
-            setMatrixPixel(6,3,true);
-            setMatrixPixel(7,3,true);
-            setMatrixPixel(8,3,true);
-            setMatrixPixel(9,3,true);
-            setMatrixPixel(10,3,true);
+            setMatrixPixel(0,2,true);
+            setMatrixPixel(1,2,true);
+            setMatrixPixel(2,2,true);
+            setMatrixPixel(3,2,true);
+            setMatrixPixel(5,2,true);
+            setMatrixPixel(6,2,true);
+            setMatrixPixel(7,2,true);
+            setMatrixPixel(8,2,true);
+            setMatrixPixel(9,2,true);
+            setMatrixPixel(10,2,true);
             //Serial.print("DREIVIRTEL ");
         break;
 
         case Terms::VOR:
-            setMatrixPixel(6,4,true);
-            setMatrixPixel(7,4,true);
-            setMatrixPixel(8,4,true);
+            setMatrixPixel(6,3,true);
+            setMatrixPixel(7,3,true);
+            setMatrixPixel(8,3,true);
             //Serial.print("VOR ");
         break;
 
         case Terms::NACH:
-            setMatrixPixel(2,4,true);
-            setMatrixPixel(3,4,true);
-            setMatrixPixel(4,4,true);
-            setMatrixPixel(5,4,true);
+            setMatrixPixel(2,3,true);
+            setMatrixPixel(3,3,true);
+            setMatrixPixel(4,3,true);
+            setMatrixPixel(5,3,true);
             //Serial.print("NACH ");
         break;
 
@@ -138,24 +137,40 @@ public:
             setMatrixPixel(4,5,true);
             //Serial.print("EINS ");
         break;
-        
+
         case Terms::ZWEI:
-            setMatrixPixel(0,6,true);
-            setMatrixPixel(1,6,true);
-            setMatrixPixel(2,6,true);
-            setMatrixPixel(3,6,true);
+            setMatrixPixel(0,5,true);
+            setMatrixPixel(1,5,true);
+            setMatrixPixel(2,5,true);
+            setMatrixPixel(3,5,true);
             //Serial.print("ZWEI ");
         break;
 
-        case Terms::DREI:
-            setMatrixPixel(0,3,true);
-            setMatrixPixel(1,3,true);
-            setMatrixPixel(2,3,true);
-            setMatrixPixel(3,3,true);
+        case Terms::DREI_1:
+            setMatrixPixel(0,2,true);
+            setMatrixPixel(1,2,true);
+            setMatrixPixel(2,2,true);
+            setMatrixPixel(3,2,true);
             //Serial.print("DREI ");
         break;
 
-        case Terms::VIER:
+        case Terms::DREI_2:
+            setMatrixPixel(1,6,true);
+            setMatrixPixel(2,6,true);
+            setMatrixPixel(3,6,true);
+            setMatrixPixel(4,6,true);
+            //Serial.print("DREI ");
+        break;
+
+        case Terms::VIER_1:
+            setMatrixPixel(4,2,true);
+            setMatrixPixel(5,2,true);
+            setMatrixPixel(6,2,true);
+            setMatrixPixel(7,2,true);
+            ///Serial.print("VIER ");
+        break;
+
+        case Terms::VIER_2:
             setMatrixPixel(7,7,true);
             setMatrixPixel(8,7,true);
             setMatrixPixel(9,7,true);
@@ -163,11 +178,19 @@ public:
             ///Serial.print("VIER ");
         break;
 
-        case Terms::FUENF:
+        case Terms::FUENF_1:
             setMatrixPixel(7,0,true);
             setMatrixPixel(8,0,true);
             setMatrixPixel(9,0,true);
             setMatrixPixel(10,0,true);
+            //Serial.print("FÜNF ");
+        break;
+
+        case Terms::FUENF_2:
+            setMatrixPixel(7,6,true);
+            setMatrixPixel(8,6,true);
+            setMatrixPixel(9,6,true);
+            setMatrixPixel(10,6,true);
             //Serial.print("FÜNF ");
         break;
 
@@ -181,11 +204,11 @@ public:
         break;
 
         case Terms::SIEBEN:
-            setMatrixPixel(6,6,true);
-            setMatrixPixel(7,6,true);
-            setMatrixPixel(8,6,true);
-            setMatrixPixel(9,6,true);
-            setMatrixPixel(10,6,true);
+            setMatrixPixel(6,5,true);
+            setMatrixPixel(7,5,true);
+            setMatrixPixel(8,5,true);
+            setMatrixPixel(9,5,true);
+            setMatrixPixel(10,5,true);
             //Serial.print("SIEBEN ");
         break;
 
@@ -221,11 +244,11 @@ public:
         break;
 
         case Terms::ZWOELF:
-            setMatrixPixel(5,5,true);
-            setMatrixPixel(6,5,true);
-            setMatrixPixel(7,5,true);
-            setMatrixPixel(8,5,true);
-            setMatrixPixel(9,5,true);
+            setMatrixPixel(5,4,true);
+            setMatrixPixel(6,4,true);
+            setMatrixPixel(7,4,true);
+            setMatrixPixel(8,4,true);
+            setMatrixPixel(9,4,true);
             //Serial.print("ZWÖLF ");
         break;
 
@@ -255,7 +278,7 @@ private:
     uint8_t _layoutCols;
     // max 16 collumns!
     uint16_t _matrixBuffer[ROWS] = {0};
-    
+
 };
 
 
