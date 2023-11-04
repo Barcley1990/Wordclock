@@ -35,6 +35,7 @@
 #include <WiFiUdp.h>
 
 #define WORDCLOCK_USE_WIFI (true)
+#define WORDCLOCK_WIFI_TIMEOUT  (20u)
 // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT +8 = 28800
@@ -156,10 +157,11 @@ void setup()
 
 
   // Setup Wifi manager
+  Serial.println("Starting Wifi Manager...");
   WiFiManager wifiManager;
-  //wifiManager.setSTAStaticIPConfig(local_IP, gateway, subnet);
-  //wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
-  wifiManager.setConnectTimeout(10u);
+  wifiManager.setSTAStaticIPConfig(local_IP, gateway, subnet);
+  wifiManager.setAPStaticIPConfig(local_IP, gateway, subnet);
+  wifiManager.setConnectTimeout(WORDCLOCK_WIFI_TIMEOUT);
   wifiManager.setSaveConfigCallback([](){
     Serial.println("WiIi Settings have been changed!");
   });
@@ -252,28 +254,30 @@ void setup()
   timeClient.update();
 
   // Update RTC with server time
-  time_t epochTime = timeClient.getEpochTime();
-
   RtcDateTime dt;
-  dt.InitWithUnix32Time((uint32_t)epochTime);
-
-  Serial.print("Epoch Time: ");
-  Serial.println(epochTime);
+  dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
   // -->DEBUG
-  Serial.print("Time ");
-  Serial.print(dt.Hour());
-  Serial.print(":");
-  Serial.print(dt.Minute());
-  Serial.print(":");
-  Serial.print(dt.Second());
-  Serial.print("\n");
+  Serial.print("NTP Time: ");
+  char datestring[20];
+  snprintf_P(datestring,
+          COUNTOF(datestring),
+          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+          dt.Month(),
+          dt.Day(),
+          dt.Year(),
+          dt.Hour(),
+          dt.Minute(),
+          dt.Second() );
+  Serial.println(datestring);
 #endif
 
   // Initialize led strip
   layout = new Layout_De_11x10();
   wordclock = new Wordclock(layout);
 
+  // Update RTC with server time
   wordclock->setRTCDateTime(dt);
+  // Switch LED power on
   wordclock->powerOn();
   delay(100);
   wordclock->begin();
@@ -349,13 +353,18 @@ void Runnable_1000_ms()
   WebSocketSend("Time", &datetimeBuffer);
 
   // -->DEBUG
-  Serial.print("Time ");
-  Serial.print(dt.Hour());
-  Serial.print(":");
-  Serial.print(dt.Minute());
-  Serial.print(":");
-  Serial.print(dt.Second());
-  Serial.print("\n");
+  Serial.print("RTC Time: ");
+  char datestring[20];
+  snprintf_P(datestring,
+          COUNTOF(datestring),
+          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+          dt.Month(),
+          dt.Day(),
+          dt.Year(),
+          dt.Hour(),
+          dt.Minute(),
+          dt.Second() );
+  Serial.println(datestring);
 
   // change color over time
   hue += 100;
@@ -388,7 +397,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     wordclock->powerOff();
   }
   else if(data == "color_reset") {
-    Serial.println("Reset Color"); 
+    Serial.println("Reset Color");
   }
 }
 
@@ -414,7 +423,8 @@ void BootPinCbk()
   Serial.println("-----Rebooting Wordclock-----");
   wordclock->powerOff();
   delay(100);
-  ESP.reset();
+  //ESP.reset();
+  ESP.rebootIntoUartDownloadMode();
 }
 
 /**

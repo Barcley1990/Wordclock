@@ -21,18 +21,21 @@
 Wordclock::Wordclock(ILayout* layout) :
   Adafruit_NeoPixel((layout->getMatrixCols()*layout->getMatrixRows()) + 4u , MCAL_LED_DIN_PIN)
 {
-    Serial.println("Initializing Wordclock");
-    _lightMeter = new BH1750(BH1750_ADDR);
-    _myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
-    _rtc = new RtcDS1302<ThreeWire>(*_myWire);
+  Serial.println("Initializing Wordclock");
+  pinMode(MCAL_DAT_PIN, OUTPUT);
+  pinMode(MCAL_CLK_PIN, OUTPUT);
+  pinMode(MCAL_RST_PIN, OUTPUT);
+  _lightMeter = new BH1750(BH1750_ADDR);
+  _myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
+  _rtc = new RtcDS1302<ThreeWire>(*_myWire);
 
-    Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
-    _lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE) ?
-        Serial.println(F("BH1750 initialised")) :
-        Serial.println(F("Error initialising BH1750"));
-    _rtc->Begin();
-    checkRTCTime();
-    _layout = layout;
+  Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
+  _lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE) ?
+      Serial.println(F("BH1750 initialised")) :
+      Serial.println(F("Error initialising BH1750"));
+  _rtc->Begin();
+  checkRTCTime();
+  _layout = layout;
 }
 
 Wordclock::~Wordclock()
@@ -321,6 +324,7 @@ void Wordclock::checkRTCTime()
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
   RtcDateTime now;
 
+  Serial.println("Checking RTC...");
   if(_rtc != nullptr)
   {
     if (!_rtc->IsDateTimeValid())
@@ -359,6 +363,10 @@ void Wordclock::checkRTCTime()
     {
         Serial.println("RTC is the same as compile time! (not expected but all is fine)");
     }
+    Serial.print("RTC time: ");
+    printDateTime(now);
+    Serial.print("Compile time: ");
+    printDateTime(compiled);
   }
   else
   {
@@ -427,15 +435,15 @@ float Wordclock::getAmbBrightness()
  */
 void Wordclock::printDateTime(const RtcDateTime& dt)
 {
-    char datestring[20];
-    snprintf_P(datestring,
-            COUNTOF(datestring),
-            PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-            dt.Month(),
-            dt.Day(),
-            dt.Year(),
-            dt.Hour(),
-            dt.Minute(),
-            dt.Second() );
-    Serial.println(datestring);
-    }
+  char datestring[20];
+  snprintf_P(datestring,
+          COUNTOF(datestring),
+          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
+          dt.Month(),
+          dt.Day(),
+          dt.Year(),
+          dt.Hour(),
+          dt.Minute(),
+          dt.Second() );
+  Serial.println(datestring);
+}
