@@ -78,15 +78,16 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
   uint8_t rows = _layout->getMatrixRows();
   uint8_t cols = _layout->getMatrixCols();
   uint8_t numleds = rows * cols;
+  bool isFullHour = false;
 
   //Set min pixels
   if(min > 5u) min -= 5u;
   switch (min)
   {
-    case 4: setPixelColor(numleds+3, _colorHSV);
-    case 3: setPixelColor(numleds+2, _colorHSV);
-    case 2: setPixelColor(numleds+1, _colorHSV);
-    case 1: setPixelColor(numleds, _colorHSV);
+    case 4: setPixelColor(numleds+0u, _colorHSV);
+    case 3: setPixelColor(numleds+1u, _colorHSV);
+    case 2: setPixelColor(numleds+2u, _colorHSV);
+    case 1: setPixelColor(numleds+3u, _colorHSV);
     default: break;
   }
 
@@ -98,11 +99,11 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
   // Set Minutes
   switch (m)
   {
-    case 0: /*Full Hour*/ break;
-    case 1: break;
-    case 2: break;
-    case 3: break;
-    case 4: break;
+    case 0: isFullHour = true; break;
+    case 1: isFullHour = true; break;
+    case 2: isFullHour = true; break;
+    case 3: isFullHour = true; break;
+    case 4: isFullHour = true; break;
     case 5:
     case 6:
     case 7:
@@ -218,7 +219,12 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     default: break;
   }
 
-  _layout->setMatrixTerm(Terms::UHR);
+  // Set only at full hour
+  if(isFullHour)
+  {
+    _layout->setMatrixTerm(Terms::UHR);
+  }
+
 
   //Get matrix and set correspondnding pixels
   updateColor(_colorHSV);
