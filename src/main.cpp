@@ -257,19 +257,6 @@ void setup()
   // Update RTC with server time
   RtcDateTime dt;
   dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
-  // -->DEBUG
-  Serial.print("NTP Time: ");
-  char datestring[20];
-  snprintf_P(datestring,
-          COUNTOF(datestring),
-          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-          dt.Month(),
-          dt.Day(),
-          dt.Year(),
-          dt.Hour(),
-          dt.Minute(),
-          dt.Second() );
-  Serial.println(datestring);
 #endif
 
   // Initialize led strip
@@ -353,22 +340,8 @@ void Runnable_1000_ms()
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
 
-  // -->DEBUG
-  Serial.print("RTC Time: ");
-  char datestring[20];
-  snprintf_P(datestring,
-          COUNTOF(datestring),
-          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-          dt.Month(),
-          dt.Day(),
-          dt.Year(),
-          dt.Hour(),
-          dt.Minute(),
-          dt.Second() );
-  Serial.println(datestring);
-
   // change color over time
-  hue += 100;
+  hue += 100u;
   wordclock->updateColor(hue, 150, value);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
