@@ -34,6 +34,12 @@
 #include <WiFiUdp.h>
 
 #define WORDCLOCK_USE_WIFI (true)
+// Set offset time in seconds to adjust for your timezone, for example:
+  // GMT +1 = 3600
+  // GMT +8 = 28800
+  // GMT -1 = -3600
+  // GMT 0 = 0
+#define WORDCLOCK_TIME_OFFSET (3600u)
 
 /***********************************************************************************************************************
  * Private Variables
@@ -241,21 +247,17 @@ void setup()
 #if (WORDCLOCK_USE_WIFI == true)
   // Initialize a NTPClient to get actual time
   timeClient.begin();
-  // Set offset time in seconds to adjust for your timezone, for example:
-  // GMT +1 = 3600
-  // GMT +8 = 28800
-  // GMT -1 = -3600
-  // GMT 0 = 0
-  timeClient.setTimeOffset(3600);
-  // Update once here. Up to now it is updated every 60seconds
+  timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
   timeClient.update();
 
   // Update RTC with server time
+  time_t epochTime = timeClient.getEpochTime();
+
   RtcDateTime dt;
-  dt.InitWithNtp32Time(timeClient.getEpochTime());
+  dt.InitWithUnix32Time((uint32_t)epochTime);
 
-  wordclock->setRTCDateTime(dt);
-
+  Serial.print("Epoch Time: ");
+  Serial.println(epochTime);
   // -->DEBUG
   Serial.print("Time ");
   Serial.print(dt.Hour());
@@ -270,6 +272,7 @@ void setup()
   layout = new Layout_De_11x10();
   wordclock = new Wordclock(layout);
 
+  wordclock->setRTCDateTime(dt);
   wordclock->powerOn();
   delay(100);
   wordclock->begin();

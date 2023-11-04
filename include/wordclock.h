@@ -105,6 +105,7 @@ private:
     ILayout* _layout = nullptr;
     
     void printDateTime(const RtcDateTime& dt);
+    void checkRTCTime();
     
 public:
     Wordclock(ILayout* layout);
