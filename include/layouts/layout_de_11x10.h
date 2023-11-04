@@ -204,6 +204,7 @@ public:
         break;
 
         case Terms::SIEBEN:
+            setMatrixPixel(5,5,true);
             setMatrixPixel(6,5,true);
             setMatrixPixel(7,5,true);
             setMatrixPixel(8,5,true);
