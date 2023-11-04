@@ -26,7 +26,8 @@ enum class Terms {
     SIEBEN,
     ACHT,
     NEUN,
-    ZEHN,
+    ZEHN_1,
+    ZEHN_2,
     ELF,
     ZWOELF,
     ZWANZIG
