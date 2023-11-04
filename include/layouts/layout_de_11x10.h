@@ -195,11 +195,11 @@ public:
         break;
 
         case Terms::SECHS:
+            setMatrixPixel(1,9,true);
             setMatrixPixel(2,9,true);
             setMatrixPixel(3,9,true);
             setMatrixPixel(4,9,true);
             setMatrixPixel(5,9,true);
-            setMatrixPixel(6,9,true);
             //Serial.print("SECHS ");
         break;
 
