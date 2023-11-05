@@ -179,7 +179,15 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 47:
     case 48:
     case 49:
-      _layout->setMatrixTerm(Terms::DREIVIRTEL);
+      if(random(0u,1u) == 1u)
+      {
+        _layout->setMatrixTerm(Terms::DREIVIRTEL);
+      }
+      else
+      {
+        _layout->setMatrixTerm(Terms::VIRTEL);
+        _layout->setMatrixTerm(Terms::VOR);
+      }
       h += 1; //Offset Hour
       break;
     case 50:
