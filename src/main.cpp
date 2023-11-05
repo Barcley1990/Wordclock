@@ -51,6 +51,12 @@ static uint32_t old_time_100 = 0u;
 static uint32_t old_time_1000 = 0u;
 
 const char* mdns_name = "Wordclock";
+const char* ssid      = "TARDIS"; 
+const char* password  = "82uqFnUSjUn7YL";
+
+const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096999";
+const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097999";
+const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -154,25 +160,24 @@ void setup()
   {
     Serial.println("-> LittleFS mounted successfully\n");
   }
-const char* ssid     = "TARDIS";         // The SSID (name) of the Wi-Fi network you want to connect to
-const char* password = "82uqFnUSjUn7YL";     // The password of the Wi-Fi network
 
-WiFi.begin(ssid, password);             // Connect to the network
-Serial.print("Connecting to ");
-Serial.print(ssid); Serial.println(" ...");
+  // Connect to the network
+  WiFi.begin(ssid, password);             
+  Serial.print("Connecting to ");
+  Serial.print(ssid); Serial.println(" ...");
 
-int i = 0;
-while (WiFi.status() != WL_CONNECTED) { // Wait for the Wi-Fi to connect
-  delay(1000);
-  Serial.print(++i); Serial.print(' ');
-}
+  int i = 0;
+  // Wait for the Wi-Fi to connect
+  while (WiFi.status() != WL_CONNECTED) { 
+    delay(1000);
+    Serial.print(++i); Serial.print(' ');
+  }
 
-Serial.println('\n');
-Serial.println("Connection established!");  
-Serial.print("IP address:\t");
-Serial.println(WiFi.localIP());         // Send the IP address of the ESP8266 to the computer
-
-
+  // Send the IP address of the ESP8266 to the computer
+  Serial.println('\n');
+  Serial.println("Connection established!");  
+  Serial.print("IP address:\t");
+  Serial.println(WiFi.localIP());         
 
   {
     // Successful connected to local wifi...
@@ -255,19 +260,6 @@ Serial.println(WiFi.localIP());         // Send the IP address of the ESP8266 to
   // Update RTC with server time
   RtcDateTime dt;
   dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
-  // -->DEBUG
-  Serial.print("NTP Time: ");
-  char datestring[20];
-  snprintf_P(datestring,
-          COUNTOF(datestring),
-          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-          dt.Month(),
-          dt.Day(),
-          dt.Year(),
-          dt.Hour(),
-          dt.Minute(),
-          dt.Second() );
-  Serial.println(datestring);
 #endif
 
   // Initialize led strip
@@ -351,22 +343,8 @@ void Runnable_1000_ms()
   WebSocketSend("Light", &ambBrightness);
   WebSocketSend("Time", &datetimeBuffer);
 
-  // -->DEBUG
-  Serial.print("RTC Time: ");
-  char datestring[20];
-  snprintf_P(datestring,
-          COUNTOF(datestring),
-          PSTR("%02u/%02u/%04u %02u:%02u:%02u"),
-          dt.Month(),
-          dt.Day(),
-          dt.Year(),
-          dt.Hour(),
-          dt.Minute(),
-          dt.Second() );
-  Serial.println(datestring);
-
   // change color over time
-  hue += 100;
+  hue += 100u;
   wordclock->updateColor(hue, 150, value);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
@@ -374,7 +352,7 @@ void Runnable_1000_ms()
 }
 
 /**
- * @brief
+ * @brief Receive Websocket Data
  *
  * @param payload
  * @param length
@@ -388,18 +366,28 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   }
   Serial.println(data);
 
-  if(data == "#esp_reset") {
+  if(data == WEBSOCKET_COMMAND_ESP_RESET) {
     ESP.reset();
   }
-  else if(data == "pwr_on_off") {
-    Serial.println("Turn Leds on/off");
+  else if(data == WEBSOCKET_COMMAND_LEDPWR_OFF) {
+    Serial.println("Turn Leds off");
     wordclock->powerOff();
   }
-  else if(data == "color_reset") {
-    Serial.println("Reset Color");
+  else if(data == WEBSOCKET_COMMAND_LEDPWR_ON) {
+    Serial.println("Turn Leds on");
+    wordclock->powerOn();
+  }
+  else {
+    Serial.println("Unknown data received...");
   }
 }
 
+/**
+ * @brief Broadcast WebSocket Data
+ *
+ * @param key
+ * @param data
+ */
 void WebSocketSend(String key, const void* data)
 {
   JSONVar objects;
@@ -411,6 +399,8 @@ void WebSocketSend(String key, const void* data)
 
   // Broadcast to all websocket clients
   webSocket.broadcastTXT(jsonString);
+
+  Serial.println("Sent JSON String: " + jsonString);
 }
 
 /**

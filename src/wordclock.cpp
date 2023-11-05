@@ -117,7 +117,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 12:
     case 13:
     case 14:
-      _layout->setMatrixTerm(Terms::ZEHN);
+      _layout->setMatrixTerm(Terms::ZEHN_1);
       _layout->setMatrixTerm(Terms::NACH);
       break;
     case 15:
@@ -169,7 +169,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 42:
     case 43:
     case 44:
-      _layout->setMatrixTerm(Terms::ZEHN);
+      _layout->setMatrixTerm(Terms::ZEHN_1);
       _layout->setMatrixTerm(Terms::NACH);
       _layout->setMatrixTerm(Terms::HALB);
       h += 1; //Offset Hour
@@ -179,7 +179,15 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 47:
     case 48:
     case 49:
-      _layout->setMatrixTerm(Terms::DREIVIRTEL);
+      if(random(0u,1u) == 1u)
+      {
+        _layout->setMatrixTerm(Terms::DREIVIRTEL);
+      }
+      else
+      {
+        _layout->setMatrixTerm(Terms::VIRTEL);
+        _layout->setMatrixTerm(Terms::VOR);
+      }
       h += 1; //Offset Hour
       break;
     case 50:
@@ -187,7 +195,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 52:
     case 53:
     case 54:
-      _layout->setMatrixTerm(Terms::ZEHN);
+      _layout->setMatrixTerm(Terms::ZEHN_1);
       _layout->setMatrixTerm(Terms::VOR);
       h += 1; //Offset Hour
       break;
@@ -213,7 +221,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 7: _layout->setMatrixTerm(Terms::SIEBEN); break;
     case 8: _layout->setMatrixTerm(Terms::ACHT); break;
     case 9: _layout->setMatrixTerm(Terms::NEUN); break;
-    case 10: _layout->setMatrixTerm(Terms::ZEHN); break;
+    case 10: _layout->setMatrixTerm(Terms::ZEHN_2); break;
     case 11: _layout->setMatrixTerm(Terms::ELF); break;
     case 12: _layout->setMatrixTerm(Terms::ZWOELF); break;
     default: break;

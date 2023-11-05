@@ -100,6 +100,7 @@ public:
             setMatrixPixel(1,2,true);
             setMatrixPixel(2,2,true);
             setMatrixPixel(3,2,true);
+            setMatrixPixel(4,2,true);
             setMatrixPixel(5,2,true);
             setMatrixPixel(6,2,true);
             setMatrixPixel(7,2,true);
@@ -229,11 +230,19 @@ public:
             //Serial.print("NEUN ");
         break;
 
-        case Terms::ZEHN:
+        case Terms::ZEHN_1:
             setMatrixPixel(0,1,true);
             setMatrixPixel(1,1,true);
             setMatrixPixel(2,1,true);
             setMatrixPixel(3,1,true);
+            //Serial.print("ZEHN ");
+        break;
+
+        case Terms::ZEHN_2:
+            setMatrixPixel(5,8,true);
+            setMatrixPixel(6,8,true);
+            setMatrixPixel(7,8,true);
+            setMatrixPixel(8,8,true);
             //Serial.print("ZEHN ");
         break;
 
