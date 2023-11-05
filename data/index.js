@@ -54,19 +54,19 @@ function initWebsocket() {
     websocket.onmessage = function(event) {
         var obj = JSON.parse(event.data);
         
-        debugMessage("WebSocket response arrived (command " + obj.command + ").", obj);
+        debugMessage("WebSocket data arrived", obj);
 
-        if(obj.hasOwnProperty('version')) {
-            $("#id_version").set("value", obj.version);
+        if(obj.hasOwnProperty("version")) {
+            $("#id_version").text(obj.version);
         }
 
-        if(obj.hasOwnProperty("ldr")) {
-            $("#id_ldr").set("value", obj.ldr);
+        if(obj.hasOwnProperty("Light")) {
+            $("#id_ldr").text(obj.Light);
         }
 
-        if(obj.hasOwnProperty('time')) {
+        if(obj.hasOwnProperty('Time')) {
             obj.time = new Date(obj.time);
-            $("#id_time").set("value", obj.time);
+            $("#id_time").text(obj.Time);
         }
     };
 
