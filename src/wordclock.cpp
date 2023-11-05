@@ -204,7 +204,10 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 57:
     case 58:
     case 59:
-    case 60:
+      _layout->setMatrixTerm(Terms::FUENF_1);
+      _layout->setMatrixTerm(Terms::VOR);
+      h += 1; //Offset Hour
+      break;
     default: break;
   }
 
