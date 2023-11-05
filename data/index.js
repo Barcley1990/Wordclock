@@ -11,11 +11,7 @@ var colorPicker;
 var COMMAND_RESET = 20;
 var COMMAND_SET_BRIGHTNESS = 95;
 var COMMAND_SET_LEDPWROFF = 96;
-
-
-
-
-
+var COMMAND_SET_LEDPWRON = 97;
 
 
 /**
@@ -37,33 +33,40 @@ function debugMessage(debugMessage, someObject) {
 	}
 }
 
+/**
+ * initWebsocket
+ */
 function initWebsocket() {
     debugMessage('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
     websocket = new WebSocket('ws://'+ window.location.hostname +':81/', ['arduino']);
 
+    // On Open Handler
     websocket.onopen = function(event) {
         debugMessage("The connection with the websocket has been established.", event);
     };
 
+    // On Close Handler
     websocket.onclose = function(event) {
         debugMessage("The connection with the websocket was closed (code " + event.code + ").", event);
     };
 
+    // On Message Received Handler
     websocket.onmessage = function(event) {
-        var data = JSON.parse(event.data);
+        var obj = JSON.parse(event.data);
         
-        debugMessage("WebSocket response arrived (command " + data.command + ").", data);
+        debugMessage("WebSocket response arrived (command " + obj.command + ").", obj);
 
-        if(data.command === "version") {
-            $("#version").set("value", data.version);
+        if(obj.hasOwnProperty('version')) {
+            $("#id_version").set("value", obj.version);
         }
 
-        if(data.command === "ldr") {
-            $("#ldr").set("value", data.ldr);
+        if(obj.hasOwnProperty("ldr")) {
+            $("#id_ldr").set("value", obj.ldr);
         }
 
-        if(data.command === "time") {
-            
+        if(obj.hasOwnProperty('time')) {
+            obj.time = new Date(obj.time);
+            $("#id_time").set("value", obj.time);
         }
     };
 
@@ -72,38 +75,72 @@ function initWebsocket() {
 	};
 }
 
+/**
+ * nstr5
+  * @param {*} number 
+ * Convert integer to string object. Padding given String 
+ * to 5 characters.
+ */
 function nstr5(number) {
 	return Math.round(number).toString().padStart(5, "0");
 }
 
+/**
+ * nstr
+ * @param {*} number 
+ * Convert integer to string object. Padding given String 
+ * to 3 characters.
+ */
 function nstr(number) {
 	return Math.round(number).toString().padStart(3, "0");
 }
 
+/**
+ * getPaddedString
+ */
 function getPaddedString(string, maxStringLength) {
 	return string.padEnd(maxStringLength, " ");
 }
 
+/**
+ * websocketSend
+ */
 function websocketSend(command, addData = "") {
 	var data = nstr(command) + addData + "999";
 	debugMessage("Send data: '" + data + "'");
 	websocket.send(data);
 }
 
+/**
+ * JQuery Ready
+ */
 $(document).ready(function() {
     
+    // Initialize websocket
     initWebsocket();
 
+    // Setup Button Handler
     $("#btnEspReset").on("click", function() {
-        websocketSend(COMMAND_RESET);debugMessage("Send");
+        websocketSend(COMMAND_RESET);
+        debugMessage("Send");
     });
 
+    // Setup Button Handler
     $("#btnLedPwr").click(function() {
-        websocketSend(COMMAND_SET_LEDPWROFF);debugMessage("Send");
+        if(buttonState===false){
+            websocketSend(COMMAND_SET_LEDPWROFF);
+            buttonState = true;
+        } else {
+            websocketSend(COMMAND_SET_LEDPWRON);
+            buttonState = false;
+        }
+        debugMessage("Send");
     });
 });
 
-// Colorpicker function
+/**
+ * JQuery Colorpicker function
+ */
 $(function(){
     // create canvas and context objects
     var canvas = document.getElementById('picker');

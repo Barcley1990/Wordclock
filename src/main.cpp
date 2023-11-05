@@ -54,6 +54,9 @@ const char* mdns_name = "Wordclock";
 const char* ssid      = "TARDIS"; 
 const char* password  = "82uqFnUSjUn7YL";
 
+const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096999";
+const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097999";
+const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -349,7 +352,7 @@ void Runnable_1000_ms()
 }
 
 /**
- * @brief
+ * @brief Receive Websocket Data
  *
  * @param payload
  * @param length
@@ -363,18 +366,28 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   }
   Serial.println(data);
 
-  if(data == "#esp_reset") {
+  if(data == WEBSOCKET_COMMAND_ESP_RESET) {
     ESP.reset();
   }
-  else if(data == "pwr_on_off") {
-    Serial.println("Turn Leds on/off");
+  else if(data == WEBSOCKET_COMMAND_LEDPWR_OFF) {
+    Serial.println("Turn Leds off");
     wordclock->powerOff();
   }
-  else if(data == "color_reset") {
-    Serial.println("Reset Color");
+  else if(data == WEBSOCKET_COMMAND_LEDPWR_ON) {
+    Serial.println("Turn Leds on");
+    wordclock->powerOn();
+  }
+  else {
+    Serial.println("Unknown data received...");
   }
 }
 
+/**
+ * @brief Broadcast WebSocket Data
+ *
+ * @param key
+ * @param data
+ */
 void WebSocketSend(String key, const void* data)
 {
   JSONVar objects;
@@ -386,6 +399,8 @@ void WebSocketSend(String key, const void* data)
 
   // Broadcast to all websocket clients
   webSocket.broadcastTXT(jsonString);
+
+  Serial.println("Sent JSON String: " + jsonString);
 }
 
 /**
