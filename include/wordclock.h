@@ -95,10 +95,11 @@ private:
     const bool _matrixVertical = true;
     const bool _matrixHorizontal = true;
     const uint8_t _matrixAngle = 0u;
-    //uint32_t _colorHSV = Color(100,100,100);
-    uint8_t _brightness = 255u;
-    uint8_t _saturation = 150u;
-    uint32_t _colorHSV = gamma32(ColorHSV(Color::MAGENTA, _saturation, _brightness));
+    bool _ledPowerState = false;;
+    uint8_t _brightness = 100u;
+    uint8_t _saturation = 50u;
+    uint8_t _hue = 0u;
+    uint32_t _colorHSV;
     BH1750* _lightMeter = nullptr;
     ThreeWire* _myWire = nullptr;
     RtcDS1302<ThreeWire>* _rtc = nullptr;
@@ -114,6 +115,21 @@ public:
     // Comon Functions
     void powerOn();
     void powerOff();
+    bool getPowerState() {
+        return _ledPowerState;
+    };
+    uint8_t getHue() {
+        return _hue;
+    };
+    uint8_t getSaturation() {
+        return _saturation;
+    };
+    uint8_t getBrightness() {
+        return _brightness;
+    };
+    uint32_t getHSVColor() {
+        return _colorHSV;
+    }
 
     // Clock Functions
     void setTime(uint8_t hour, uint8_t minute);

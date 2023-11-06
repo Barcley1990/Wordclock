@@ -58,6 +58,12 @@ const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096999";
 const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097999";
 const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
 
+const char* JSON_KEY_AMBIENT = "Light";
+const char* JSON_KEY_TIME = "Time";
+const char* JSON_KEY_VERSION = "version";
+const char* JSON_KEY_LED_PWR_STATE = "PwrState";
+const char* JSON_KEY_BRIGHTNESS = "Brightness";
+
 /***********************************************************************************************************************
  * Local function declarations and objects
  ***********************************************************************************************************************/
@@ -80,13 +86,6 @@ Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
-//Week Days
-String weekDays[7]={"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-
-//Month names
-String months[12]={"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-
 
 /***********************************************************************************************************************
  * Function definitions
@@ -217,7 +216,8 @@ void setup()
         break;
       case WStype_CONNECTED:
         Serial.println("Client Connected");
-        WebSocketSend("version", &version);
+        WebSocketSend(JSON_KEY_VERSION, &version);
+       // WebSocketSend("brightness", &wordclock->getBrightness());
         break;
       case WStype_TEXT:
         Serial.print("Data Received: ");
@@ -275,6 +275,11 @@ void setup()
   wordclock->clear();
   wordclock->setBrightness(map(50, 0, 100, 0, 255));
   wordclock->show();
+
+  JSONVar clockData;
+  clockData[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
+  clockData[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
+  clockData[JSON_KEY_VERSION] = GetVersion();
 }
 
 /**
@@ -323,14 +328,9 @@ void Runnable_100_ms()
 void Runnable_1000_ms()
 {
   static uint16_t hue = 0u;
-  static uint8_t value = 0u;
+  static uint8_t brightness = 100u;
+  static uint8_t saturation = 50u;
   float lux = wordclock->getAmbBrightness();
-  if(lux != 0.0f) {
-    //value = (uint8_t)map((uint8_t)lux,50,400,100,255);
-  }
-  value = 0xFFu;
-
-  // Read RTC time
   RtcDateTime dt = wordclock->getRTCDateTime();
 
   // Convert date-time to send to html server
@@ -340,12 +340,12 @@ void Runnable_1000_ms()
 
   // Send data to html server
   String ambBrightness = (String)lux;
-  WebSocketSend("Light", &ambBrightness);
-  WebSocketSend("Time", &datetimeBuffer);
+  WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
+  WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
 
   // change color over time
-  hue += 100u;
-  wordclock->updateColor(hue, 150, value);
+  hue += 2u;
+  wordclock->updateColor(hue, saturation, brightness);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
@@ -394,7 +394,7 @@ void WebSocketSend(String key, const void* data)
   String jsonString;
 
   // Build JSON object
-  objects[key] = *(String*)data;;
+  objects[key] = *(String*)data;
   jsonString = JSON.stringify(objects);
 
   // Broadcast to all websocket clients

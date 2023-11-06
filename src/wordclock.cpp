@@ -22,20 +22,28 @@ Wordclock::Wordclock(ILayout* layout) :
   Adafruit_NeoPixel((layout->getMatrixCols()*layout->getMatrixRows()) + 4u , MCAL_LED_DIN_PIN)
 {
   Serial.println("Initializing Wordclock");
-  pinMode(MCAL_DAT_PIN, OUTPUT);
-  pinMode(MCAL_CLK_PIN, OUTPUT);
-  pinMode(MCAL_RST_PIN, OUTPUT);
+
+  // Initialize color on startup
+  _colorHSV = gamma32(ColorHSV(
+    Color::MAGENTA, map(_saturation, 0, 100, 0 ,255), map(_brightness, 0, 100, 0 ,255)));
+
+  // Apply layout
+  _layout = layout;
+
+  // Create LDR object
   _lightMeter = new BH1750(BH1750_ADDR);
+
+  // Create RTC object
   _myWire = new ThreeWire(MCAL_DAT_PIN, MCAL_CLK_PIN, MCAL_RST_PIN);
   _rtc = new RtcDS1302<ThreeWire>(*_myWire);
 
+  // Start RTC and LDR
   Wire.begin(MCAL_SDA_PIN, MCAL_SCL_PIN);
   _lightMeter->begin(BH1750::CONTINUOUS_HIGH_RES_MODE) ?
       Serial.println(F("BH1750 initialised")) :
       Serial.println(F("Error initialising BH1750"));
   _rtc->Begin();
   checkRTCTime();
-  _layout = layout;
 }
 
 Wordclock::~Wordclock()
@@ -55,6 +63,7 @@ void Wordclock::powerOff()
 {
   digitalWrite(MCAL_LED_EN_PIN, LOW);
   clear();
+  _ledPowerState = false;
 }
 
 /**
@@ -66,6 +75,7 @@ void Wordclock::powerOn()
   clear();
   digitalWrite(MCAL_LED_EN_PIN, HIGH);
   show();
+  _ledPowerState = true;
 }
 
 /**
@@ -316,9 +326,20 @@ void Wordclock::updateColor(uint32_t color)
   }
 }
 
+/**
+ * @brief updateColor
+ * 
+ * @param h Hue a value from 0-100%
+ * @param b Saturation a value from 0-100%
+ * @param v Brightness a value from 0-100%
+ */
 void Wordclock::updateColor(uint16_t h, uint8_t b, uint8_t v)
 {
-  _colorHSV = gamma32(ColorHSV(h,b,v));
+  if(h>=100u) b = 100u;
+  if(b>=100u) b = 100u;
+  if(v>=100u) v = 100u;
+
+  _colorHSV = gamma32(ColorHSV(map(h, 0u, 100u, 0u, 0xFFFFu), map(b, 0u, 100u, 0u, 0xFFu), map(v, 0u, 100u, 0u, 0xFFu)));
   for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
   {
     for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
