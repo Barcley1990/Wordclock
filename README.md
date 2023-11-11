@@ -7,15 +7,15 @@
 
 [![ESP8266](https://img.shields.io/badge/ESP-8266-000000.svg?longCache=true&style=flat&colorA=CC101F)](https://www.espressif.com/en/products/socs/esp8266)
 
-This works with the ESP8266 Arduino platform
+Using ESP8266 Arduino platform
 https://github.com/esp8266/Arduino
 
-Wordclock runs on WROOM-02 module:
+ESP8266 WROOM-02 module:
 http://espressif.com/en/products/hardware/esp-wroom-02/resources
 
 ---
 
-## This project is using following parts:
+## Hardware:
 - WROOM-02 module
 - BH1750 Light sensor
 - DC1302 RTC module
