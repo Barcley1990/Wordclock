@@ -1,73 +1,94 @@
-<!DOCTYPE html>
-<HTML lang="en" dir="ltr">
-	<HEAD>
-		<TITLE>Wordclock</TITLE>
-        
-        <meta charset="utf-8">
-	    <title>Wordclocl</title>
-	    <link rel="stylesheet" type="text/css" href="style.css">
-	    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-	</HEAD>
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name=description content="">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wordclock</title>
 
-	<BODY>
-		<div>
-			<div class="sidebar">
-				<header>Wordclock</header>
-				<ul>
-				 <li><a href="/index"><i class="fas fa-qrcode"></i>Dashboard</a></li>
-				 <li><a href="/update"><i class="fas fa-link"></i>Update</a></li>
-				</ul>
-				<a class="version" id="id_version"></a>
+<link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+
+</head>
+
+<body>
+
+<div class="container">
+	<header>
+		<span class="headline" >Wordclock</span> 
+	</header>
+		
+    <article>
+		<div style="margin: 20px;">
+			
+			<div style="margin-top: 5px;">
+				<p class="inline">Current RTC time: </p>
+				<p class="inline" id="id_time"></p>
+			</div>
+			<br>
+			<div>
+				<p class="inline"> Current ambient brightness:</p>
+				<p class="inline" id="id_ambient"></p>
+				<p class="inline"> Lux</p>
+			</div>
+			<br>
+			<div class="slidercontainer">
+				<div><label for="brightness">LED Brightness</label></div> 
+				<div><input class="slider" id="id_brightness" type="range" min="0" max="100" value="50"/></div> 
+				<div><p>Brightness: <span id="id_slider_value"></span></p></div>
+			</div>
+			<br>
+			<div>
+				<button class="button" type="button" id="id_button_reset">ESP Reset</button>
+			</div>
+			<div>
+				<button class="button" type="button" id="id_button_ledpwr">Turn LEDs</button>
 			</div>
 
-			<div class="main">
-				<section>
-					Wordclock main page. 
-					<br><br> 
-				</section>
-				<div>
-					<p class="inline">Current RTC time: </p>
-					<p class="inline" id="id_time"></p>
-				</div>
-				<div>
-					<p class="inline"> Current ambient brightness:</p>
-					<p class="inline" id="id_ldr"></p>
-					<p class="inline"> Lux</p>
-				</div>
 				
-				<button class="button" type='button' id='btEspReset'>Reset ESP</button>
-				<button class="button" type='button' id='btnLedPwr'>Turn Power Off</button>
+			<button class="button" type='button' id='btEspReset'>Reset ESP</button>
+			<button class="button" type='button' id='btnLedPwr'>Turn Power Off</button>
 
-				<br><br>
-				
+			<br><br>
+			
 
-				<!-- colorpicker element -->
-				<div class="colorpicker">
-					<canvas id="picker" width="300" height="300"></canvas>
-	
-					<div class="controls">
-						<div><label>R</label> <input type="text" id="rVal" /></div>
-						<div><label>G</label> <input type="text" id="gVal" /></div>
-						<div><label>B</label> <input type="text" id="bVal" /></div>
-						<div><label>RGB</label> <input type="text" id="rgbVal" /></div>
-						<div><label>HEX</label> <input type="text" id="hexVal" /></div>
-					</div>
+			<!-- colorpicker element -->
+			<div class="colorpicker">
+				<canvas id="picker" width="300" height="300"></canvas>
+
+				<div class="controls">
+					<div><label>R</label> <input type="text" id="rVal" /></div>
+					<div><label>G</label> <input type="text" id="gVal" /></div>
+					<div><label>B</label> <input type="text" id="bVal" /></div>
+					<div><label>RGB</label> <input type="text" id="rgbVal" /></div>
+					<div><label>HEX</label> <input type="text" id="hexVal" /></div>
 				</div>
-
-				<br><br>
-
-				<div>
-                    <p id="output"></div>
-                </div>
 			</div>
+
+
 
 		</div>
+		
+	</article>
+    
+	<aside>
+		<div class="sidebar">
+			<ul>
+			 <li><a href="/index"><i class="fas fa-qrcode"></i>Dashboard</a></li>
+			 <li><a href="/update"><i class="fas fa-link"></i>Update</a></li>
+			</ul>
+			<a class="version" id="id_version">version</a>
+		</div>
+	</aside>
 
-		<script type="text/javascript" src="jquery.js"></script>
-		<script type="text/javascript" src="index.js"></script>
-	</BODY>
+
+    <footer>
+		<p></p>
+	</footer>
+</div>
 
 
-</HTML>
-
-
+	<script type="text/javascript" src="jquery.js"></script>	
+	<script type="text/javascript" src="index.js"></script>
+</body>
+</html>

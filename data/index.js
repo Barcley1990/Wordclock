@@ -2,10 +2,10 @@
  * Wordclock Java Script
 */
 
-
-var buttonState = false;
 var debug = true;
-var colorPicker;
+var led_power_state = false;
+var led_brightness = 0;
+var color_picker;
 
 // commands
 var COMMAND_RESET = 20;
@@ -13,32 +13,56 @@ var COMMAND_SET_BRIGHTNESS = 95;
 var COMMAND_SET_LEDPWROFF = 96;
 var COMMAND_SET_LEDPWRON = 97;
 
+// JSON Keys
+const JSON_KEY_AMBIENT = "Light";
+const JSON_KEY_TIME = "Time";
+const JSON_KEY_VERSION = "Version";
+const JSON_KEY_LED_PWR_STATE = "PwrState";
+const JSON_KEY_BRIGHTNESS = "Brightness";
+
 
 /**
- * Function definitions
+ * JQuery Ready
  */
-/* eslint-disable no-console */
-function debugMessage(debugMessage, someObject) {
-	if (debug === true) {
+$(document).ready(function() {
+    debugMessage("Document fully loaded")
+    // Initialize websocket
+    initWebsocket();
+    colorPicker();
 
-		if (console !== undefined) {
-			if (someObject) {
-				console.log(debugMessage, someObject);
-			} else {
-				console.log(debugMessage);
-			}
-		}
+    // Setup Button Handler
+    $("#id_button_reset").on("click", function() {
+        websocketSend(COMMAND_RESET);
+    });
 
-		$("#output").text("debugMessage");
-	}
-}
+    // Setup Button Handler
+    $("#id_button_ledpwr").click(function() {
+        if(buttonState===false){
+            websocketSend(COMMAND_SET_LEDPWROFF);
+            buttonState = true;
+        } else {
+            websocketSend(COMMAND_SET_LEDPWRON);
+            buttonState = false;
+        }
+    });
+
+    // Slider Handler
+    $("#id_brightness").on("input", function() {
+        var value = $(this).val();
+        $("#id_slider_value").text(value);
+        debugMessage("slider", value);
+    });
+});
+
 
 /**
  * initWebsocket
  */
 function initWebsocket() {
-    debugMessage('Trying to open a WebSocket connection to ' + 'ws://' + window.location.hostname + ':81/');
-    websocket = new WebSocket('ws://'+ window.location.hostname +':81/', ['arduino']);
+    const HOST = window.location.hostname;
+
+    debugMessage('Trying to open a WebSocket connection to ' + 'ws://' + HOST + ':81/');
+    websocket = new WebSocket('ws://'+ HOST +':81/', ['arduino']);
 
     // On Open Handler
     websocket.onopen = function(event) {
@@ -56,15 +80,15 @@ function initWebsocket() {
         
         debugMessage("WebSocket data arrived", obj);
 
-        if(obj.hasOwnProperty("version")) {
+        if(obj.hasOwnProperty(JSON_KEY_VERSION)) {
             $("#id_version").text(obj.version);
         }
 
-        if(obj.hasOwnProperty("Light")) {
+        if(obj.hasOwnProperty(JSON_KEY_AMBIENT)) {
             $("#id_ldr").text(obj.Light);
         }
 
-        if(obj.hasOwnProperty('Time')) {
+        if(obj.hasOwnProperty(JSON_KEY_TIME)) {
             obj.time = new Date(obj.time);
             $("#id_time").text(obj.Time);
         }
@@ -111,37 +135,14 @@ function websocketSend(command, addData = "") {
 	websocket.send(data);
 }
 
-/**
- * JQuery Ready
- */
-$(document).ready(function() {
-    
-    // Initialize websocket
-    initWebsocket();
-
-    // Setup Button Handler
-    $("#btnEspReset").on("click", function() {
-        websocketSend(COMMAND_RESET);
-        debugMessage("Send");
-    });
-
-    // Setup Button Handler
-    $("#btnLedPwr").click(function() {
-        if(buttonState===false){
-            websocketSend(COMMAND_SET_LEDPWROFF);
-            buttonState = true;
-        } else {
-            websocketSend(COMMAND_SET_LEDPWRON);
-            buttonState = false;
-        }
-        debugMessage("Send");
-    });
-});
 
 /**
  * JQuery Colorpicker function
  */
-$(function(){
+function colorPicker(){
+
+    debugMessage("Initialize Color Picker")
+
     // create canvas and context objects
     var canvas = document.getElementById('picker');
     var ctx = canvas.getContext('2d');
@@ -175,13 +176,13 @@ $(function(){
         $('#rgbVal').val(pixel[0]+','+pixel[1]+','+pixel[2]);
 
         var dColor = pixel[2] + 256 * pixel[1] + 65536 * pixel[0];
-        colorPicker = dColor;
+        color_picker = dColor;
         $('#hexVal').val('#' + ('0000' + dColor.toString(16)).substr(-6));
     });
 
     // click event handler
     $('#picker').click(function(e) { 
-        var data = {'#color' : colorPicker};
+        var data = {'#color' : color_picker};
         if (websocket.readyState !== WebSocket.CLOSED) {
             websocket.send(data);
         }
@@ -189,9 +190,25 @@ $(function(){
             console.log("Websocket not ready yet");
         }
     }); 
-});
+}
 
+/**
+ * Function definitions
+ */
+/* eslint-disable no-console */
+function debugMessage(debugMessage, someObject) {
+	if (debug === true) {
 
+		if (console !== undefined) {
+			if (someObject) {
+				console.log(debugMessage, someObject);
+			} else {
+				console.log(debugMessage);
+			}
+		}
 
+		$("#output").text("debugMessage");
+	}
+}
 
 

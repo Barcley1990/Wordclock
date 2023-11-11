@@ -5,17 +5,59 @@
   list-style: none;
   text-decoration: none;
 }
+
 body {
-  font-family: 'Roboto', sans-serif;
+  margin:0;
 }
-.sidebar {
-  position: fixed;
-  left: 0px;
-  width: 250px;
-  height: 100%;
+
+.container {
+  height:100vh;
+  display: grid;
+  grid-template-rows: 70px 1fr 20px;
+  grid-template-columns: 25% 25% 25% 25%;
+  grid-template-areas: 
+      "header header header header"
+      "sidebar content content content"
+      "footer footer footer footer"
+  ;
+}
+
+.headline {
+  font-size: 22px;
+  color: white;
+  line-height: 70px;
+  text-align: center;
+  user-select: none;
+  margin-left: 50px;
+}
+
+header {
+  background: #073e59;
+  grid-area: header;
+}
+
+article {
+  background: #063146;
+  grid-area: content;
+}
+
+aside {
   background: #042331;
+  grid-area: sidebar;
+}
+
+footer {
+  background: #042331;
+  grid-area: footer;
+}
+
+.sidebar {
+  left: 0px;
+  height: 100%;
+  
   transition: all .5s ease;
 }
+
 .sidebar header {
   font-size: 22px;
   color: white;
@@ -24,6 +66,7 @@ body {
   background: #063146;
   user-select: none;
 }
+
 .sidebar ul a{
   display: block;
   height: 100%;
@@ -38,12 +81,16 @@ body {
   transition: .4s;
 }
 
+.sidebar ul a i{
+  margin-right: 16px;
+}
+
 ul li:hover a{
   padding-left: 50px;
 }
 
-.sidebar ul a i{
-  margin-right: 16px;
+.inline {
+  display: inline;
 }
 
 .version {
@@ -54,91 +101,43 @@ ul li:hover a{
   display: inline;
 }
 
+p {
+  color: blanchedalmond;
+}
+
+label {
+  color: blanchedalmond;
+}
+
 .button {
   background-color: #704caf; /* Green */
   border: none;
   color: white;
-  padding: 16px 32px;
   text-align: center;
   text-decoration: none;
   display: inline-block;
   font-size: 16px;
   margin: 4px 2px;
-  height:50px;
+  height: 25px;
   width:200px;
   transition-duration: 0.2s;
   cursor: pointer;
   transition-duration: 0.2s;
 }
+
 .button:hover {
   background-color: white; 
   color: black; 
   border: 2px solid #4CAF50;
 }
-.main{
-  background: #063146;
-  background-position: center;
-  background-size: cover;
-  margin-left: 250px;
-  padding: 10px;
-  height: 100vh;
-  transition: all .5s;
-  color: white;
-}
-.inline {
-  display: inline;
-}
-.container {
-  margin: 20px auto;
-  text-align: justify;
-  width: 600px;
-}
 
-/* colorpicker styles */
-.colorpicker {
-  background-color: #222222;
-  border-radius: 5px 5px 5px 5px;
-  box-shadow: 2px 2px 2px #444444;
-  color: #FFFFFF;
-  font-size: 12px;
-  position: absolute;
-  width: 460px;
-}
-#picker {
-  cursor: crosshair;
-  float: left;
-  margin: 10px;
-  border: 0;
-}
-.controls {
-  float: right;
-  margin: 10px;
-}
-.controls > div {
-  border: 1px solid #2F2F2F;
-  margin-bottom: 5px;
-  padding: 5px;
-}
-.controls label {
-  float: left;
-}
-.controls > div input {
-  background-color: #121212;
-  border: 1px solid #2F2F2F;
-  color: #DDDDDD;
-  float: right;
-  font-size: 10px;
-  height: 14px;
-  margin-left: 6px;
-  text-align: center;
-  text-transform: uppercase;
-  width: 75px;
-}
-.box-debug {
-  overflow: hidden;
-  overflow-wrap: break-word;
-}
-
-.box-debug > div{
-  font-family: monospace;
+.slider {
+  appearance: none;
+  width: 200px; /* Full-width */
+  height: 25px; /* Specified height */
+  background: rgb(76, 75, 75); /* Grey background */
+  outline: none; /* Remove outline */
+  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
 }

@@ -60,7 +60,7 @@ const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
 
 const char* JSON_KEY_AMBIENT = "Light";
 const char* JSON_KEY_TIME = "Time";
-const char* JSON_KEY_VERSION = "version";
+const char* JSON_KEY_VERSION = "Version";
 const char* JSON_KEY_LED_PWR_STATE = "PwrState";
 const char* JSON_KEY_BRIGHTNESS = "Brightness";
 
