@@ -4,7 +4,7 @@
 
 var debug = true;
 var led_power_state = false;
-var led_brightness = 0;
+var led_brightness = 50;
 var color_picker;
 
 // commands
