@@ -138,7 +138,7 @@ public:
     // LED Functions
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     void updateColor(uint32_t color);
-    void updateColor(uint16_t h, uint8_t b, uint8_t v);
+    void updateColor(uint8_t h, uint8_t b, uint8_t v);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);

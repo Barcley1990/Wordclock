@@ -328,8 +328,8 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  static uint16_t hue = 0u;
-  static uint8_t brightness = 100u;
+  static uint16_t hue = 50u;
+  static uint8_t brightness = 50u;
   static uint8_t saturation = 50u;
   float lux = wordclock->getAmbBrightness();
   RtcDateTime dt = wordclock->getRTCDateTime();
@@ -345,7 +345,7 @@ void Runnable_1000_ms()
   WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
 
   // change color over time
-  hue += 2u;
+  //hue += 2u;
   wordclock->updateColor(hue, saturation, brightness);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());

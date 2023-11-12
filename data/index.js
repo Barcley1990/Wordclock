@@ -37,12 +37,12 @@ $(document).ready(function() {
 
     // Setup Button Handler
     $("#id_button_ledpwr").click(function() {
-        if(buttonState===false){
+        if(led_power_state===false){
             websocketSend(COMMAND_SET_LEDPWROFF);
-            buttonState = true;
+            led_power_state = true;
         } else {
             websocketSend(COMMAND_SET_LEDPWRON);
-            buttonState = false;
+            led_power_state = false;
         }
     });
 
@@ -81,15 +81,15 @@ function initWebsocket() {
         debugMessage("WebSocket data arrived", obj);
 
         if(obj.hasOwnProperty(JSON_KEY_VERSION)) {
-            $("#id_version").text(obj.version);
+            $("#id_version").text(obj.Version);
         }
 
         if(obj.hasOwnProperty(JSON_KEY_AMBIENT)) {
-            $("#id_ldr").text(obj.Light);
+            $("#id_ambient").text(obj.Light);
         }
 
         if(obj.hasOwnProperty(JSON_KEY_TIME)) {
-            obj.time = new Date(obj.time);
+            obj.Time = new Date(obj.Time);
             $("#id_time").text(obj.Time);
         }
     };

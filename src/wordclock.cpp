@@ -333,13 +333,16 @@ void Wordclock::updateColor(uint32_t color)
  * @param b Saturation a value from 0-100%
  * @param v Brightness a value from 0-100%
  */
-void Wordclock::updateColor(uint16_t h, uint8_t b, uint8_t v)
+void Wordclock::updateColor(uint8_t h, uint8_t b, uint8_t v)
 {
-  if(h>=100u) b = 100u;
+  if(h>=100u) h = 100u;
   if(b>=100u) b = 100u;
   if(v>=100u) v = 100u;
 
-  _colorHSV = gamma32(ColorHSV(map(h, 0u, 100u, 0u, 0xFFFFu), map(b, 0u, 100u, 0u, 0xFFu), map(v, 0u, 100u, 0u, 0xFFu)));
+  _colorHSV = gamma32(ColorHSV(
+    map(h, 0u, 100u, 0u, 0xFFFFu), 
+    map(b, 0u, 100u, 0u, 0xFFu), 
+    map(v, 0u, 100u, 0u, 0xFFu)));
   for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
   {
     for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
