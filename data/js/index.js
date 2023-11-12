@@ -2,23 +2,22 @@
  * Wordclock Java Script
 */
 
-var debug = true;
-var led_power_state = false;
-var led_brightness = 50;
-var color_picker;
+let debug = true;
+let led_power_state = false;
+let led_brightness = 50;
 
 // commands
-var COMMAND_RESET = 20;
-var COMMAND_SET_BRIGHTNESS = 95;
-var COMMAND_SET_LEDPWROFF = 96;
-var COMMAND_SET_LEDPWRON = 97;
+const COMMAND_RESET = 20;
+const COMMAND_SET_HSV = 95;
+const COMMAND_SET_LEDPWROFF = 96;
+const COMMAND_SET_LEDPWRON = 97;
 
 // JSON Keys
 const JSON_KEY_AMBIENT = "Light";
 const JSON_KEY_TIME = "Time";
 const JSON_KEY_VERSION = "Version";
 const JSON_KEY_LED_PWR_STATE = "PwrState";
-const JSON_KEY_BRIGHTNESS = "Brightness";
+const JSON_KEY_HSV = "HSV";
 
 
 /**
@@ -28,7 +27,6 @@ $(document).ready(function() {
     debugMessage("Document fully loaded")
     // Initialize websocket
     initWebsocket();
-    colorPicker();
 
     // Setup Button Handler
     $("#id_button_reset").on("click", function() {
@@ -54,6 +52,35 @@ $(document).ready(function() {
         $("#id_slider_value").text(value);
         debugMessage("slider", value);
     });
+
+    // Create Color Picker (Dark)
+    let dark_color_picker = 
+        new ColorPickerControl({
+            use_alpha: false, 
+            container: document.querySelector('.color-picker-dark-theme'), 
+            theme: 'dark'
+        });
+
+    // Create Color Picker (Light)
+    let light_color_picker = 
+        new ColorPickerControl({
+            use_alpha: false, 
+            container: document.querySelector('.color-picker-light-theme'), 
+            theme: 'light' 
+        });
+
+    dark_color_picker.on('change', (color) =>  {
+        debugMessage("Color Picker Dark:",light_color_picker.color.fromHSVa(color.h, color.s, color.v, color.a));
+        $(".button").css("background-color", color.toHEX());
+        $(".button").css("opacity", color.a / 255);
+        websocketSend(COMMAND_SET_HSV, color.toHEX());
+    });
+
+    light_color_picker.on('change', (color) => {
+        debugMessage("Color Picker Light:",light_color_picker.color.fromHSVa(color.h, color.s, color.v, color.a));
+        $(".button").css("background-color", color.toHEX());
+        $(".button").css("opacity", color.a / 255);
+    });
 });
 
 
@@ -78,7 +105,7 @@ function initWebsocket() {
 
     // On Message Received Handler
     websocket.onmessage = function(event) {
-        var obj = JSON.parse(event.data);
+        let obj = JSON.parse(event.data);
         
         debugMessage("WebSocket data arrived", obj);
 
@@ -102,14 +129,16 @@ function initWebsocket() {
 }
 
 /**
- * nstr5
-  * @param {*} number 
- * Convert integer to string object. Padding given String 
- * to 5 characters.
+ * websocketSend
  */
-function nstr5(number) {
-	return Math.round(number).toString().padStart(5, "0");
+function websocketSend(command, addData = "") {
+	var data = nstr(command) + addData;
+	debugMessage("Send data: '" + data + "'");
+	websocket.send(data);
 }
+
+
+changeTheme = (e) => document.querySelector('.flip-container').dataset.flipped = (e.value == 'light');
 
 /**
  * nstr
@@ -128,19 +157,12 @@ function getPaddedString(string, maxStringLength) {
 	return string.padEnd(maxStringLength, " ");
 }
 
-/**
- * websocketSend
- */
-function websocketSend(command, addData = "") {
-	var data = nstr(command) + addData + "999";
-	debugMessage("Send data: '" + data + "'");
-	websocket.send(data);
-}
+
 
 
 /**
  * JQuery Colorpicker function
- */
+
 function colorPicker(){
 
     debugMessage("Initialize Color Picker")
@@ -193,7 +215,7 @@ function colorPicker(){
         }
     }); 
 }
-
+ */
 /**
  * Function definitions
  */

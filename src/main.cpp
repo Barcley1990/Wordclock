@@ -55,9 +55,10 @@ const char* mdns_name = "Wordclock";
 const char* ssid      = "TARDIS"; 
 const char* password  = "82uqFnUSjUn7YL";
 
-const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096999";
-const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097999";
-const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
+const char* WEBSOCKET_COMMAND_SET_HSV = "095";
+const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
+const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
+const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
 
 const char* JSON_KEY_AMBIENT = "Light";
 const char* JSON_KEY_TIME = "Time";
@@ -200,11 +201,13 @@ void setup()
         HtmlServer.send(404, "text/plain", message);
     });
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
-    HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
-    HtmlServer.serveStatic("/index.js", LittleFS, "/index.js");
-    HtmlServer.serveStatic("/jquery.js", LittleFS, "/jquery.js");
+    HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
+    HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
+    HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
+    HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
+    HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
     HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-    HtmlServer.serveStatic("/images/colorwheel5.png", LittleFS, "/images/colorwheel5.png");
+    HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
 
 
     // Configure WebSocket Server
@@ -328,9 +331,6 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  static uint16_t hue = 50u;
-  static uint8_t brightness = 50u;
-  static uint8_t saturation = 50u;
   float lux = wordclock->getAmbBrightness();
   RtcDateTime dt = wordclock->getRTCDateTime();
 
@@ -346,7 +346,7 @@ void Runnable_1000_ms()
 
   // change color over time
   //hue += 2u;
-  wordclock->updateColor(hue, saturation, brightness);
+  //wordclock->updateColor(hue, saturation, brightness);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
@@ -360,23 +360,38 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
+  String command;
   String data;
-
-  for(uint8_t i=0; i<length; i++) {
-    data += *(char*)payload++;
+  
+  // Stringify payload
+  for(uint8_t i=0u; i<length; i++) {
+    // First 3 characters should contain the command
+    if(i<=2u) {
+      command += *(char*)payload++;
+    }
+    // Remaining characterst contain possilbe values
+    else {
+      data += *(char*)payload++;
+    }
   }
   Serial.println(data);
 
-  if(data == WEBSOCKET_COMMAND_ESP_RESET) {
+  // Check for command
+  if(command == WEBSOCKET_COMMAND_ESP_RESET) {
     ESP.reset();
   }
-  else if(data == WEBSOCKET_COMMAND_LEDPWR_OFF) {
+  else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
     Serial.println("Turn Leds off");
     wordclock->powerOff();
   }
-  else if(data == WEBSOCKET_COMMAND_LEDPWR_ON) {
+  else if(command == WEBSOCKET_COMMAND_LEDPWR_ON) {
     Serial.println("Turn Leds on");
     wordclock->powerOn();
+  }
+  else if(command == WEBSOCKET_COMMAND_SET_HSV) {
+    Serial.println("Update HSV to: " + data);
+    wordclock->updateColor(wordclock->gamma32((int)strtol(&data[1u], NULL, 16u)));
+    wordclock->show();
   }
   else {
     Serial.println("Unknown data received...");

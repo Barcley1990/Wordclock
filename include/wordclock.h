@@ -96,7 +96,7 @@ private:
     const bool _matrixHorizontal = true;
     const uint8_t _matrixAngle = 0u;
     bool _ledPowerState = false;;
-    uint8_t _brightness = 100u;
+    uint8_t _brightness = 50u;
     uint8_t _saturation = 50u;
     uint8_t _hue = 0u;
     uint32_t _colorHSV;

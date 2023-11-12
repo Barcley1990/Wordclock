@@ -310,17 +310,29 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
 
 void Wordclock::updateColor(uint32_t color)
 {
-  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
+  uint8_t rows = _layout->getMatrixRows();
+  uint8_t cols = _layout->getMatrixCols();
+  uint8_t numleds = rows * cols;
+  
+  // Update HSV color in case function was called from outside
+  _colorHSV = color;
+
+  setPixelColor(numleds+0u, _colorHSV);
+  setPixelColor(numleds+1u, _colorHSV);
+  setPixelColor(numleds+2u, _colorHSV);
+  setPixelColor(numleds+3u, _colorHSV);
+
+  for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
   {
-    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
+    for(uint8_t x=0u; x<_layout->getMatrixCols(); x++)
     {
       if(_layout->getMatrixPixel(x,y) == true)
       {
-        setPixelColorXY(x,y,color);
+        setPixelColorXY(x, y, _colorHSV);
       }
       else
       {
-        setPixelColorXY(x,y,0);
+        setPixelColorXY(x, y, 0u);
       }
     }
   }
@@ -343,9 +355,10 @@ void Wordclock::updateColor(uint8_t h, uint8_t b, uint8_t v)
     map(h, 0u, 100u, 0u, 0xFFFFu), 
     map(b, 0u, 100u, 0u, 0xFFu), 
     map(v, 0u, 100u, 0u, 0xFFu)));
-  for(uint8_t y=0; y<_layout->getMatrixRows(); y++)
+
+  for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
   {
-    for(uint8_t x=0; x<_layout->getMatrixCols(); x++)
+    for(uint8_t x=0u; x<_layout->getMatrixCols(); x++)
     {
       if(_layout->getMatrixPixel(x,y) == true)
       {
@@ -353,7 +366,7 @@ void Wordclock::updateColor(uint8_t h, uint8_t b, uint8_t v)
       }
       else
       {
-        setPixelColorXY(x,y,0);
+        setPixelColorXY(x,y,0u);
       }
     }
   }

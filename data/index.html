@@ -6,9 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wordclock</title>
 
-<link rel="stylesheet" type="text/css" href="style.css">
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<link rel="stylesheet" type="text/css" href="/css/color-picker.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-
+<script type="text/javascript" src="/js/color-picker.js"></script>	
 </head>
 
 <body>
@@ -47,7 +48,7 @@
 			<br><br>
 			
 
-			<!-- colorpicker element -->
+			<!-- colorpicker element 
 			<div class="colorpicker">
 				<canvas id="picker" width="300" height="300"></canvas>
 
@@ -59,9 +60,17 @@
 					<div><label>HEX</label> <input type="text" id="hexVal" /></div>
 				</div>
 			</div>
+			-->
 
-
-
+			<div class="flip-container">
+				<div class="flipper">
+					<div class="front color-picker-dark-theme"></div>
+					<div class="back color-picker-light-theme"></div>
+				</div>
+			</div>
+			
+		
+		
 		</div>
 		
 	</article>
@@ -83,7 +92,10 @@
 </div>
 
 
-	<script type="text/javascript" src="jquery.js"></script>	
-	<script type="text/javascript" src="index.js"></script>
+	<script type="text/javascript" src="/js/jquery.js"></script>	
+	<script type="text/javascript" src="/js/index.js"></script>
+
+	
+	
 </body>
 </html>
