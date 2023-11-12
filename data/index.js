@@ -40,9 +40,11 @@ $(document).ready(function() {
         if(led_power_state===false){
             websocketSend(COMMAND_SET_LEDPWROFF);
             led_power_state = true;
+            $("#id_button_ledpwr").text("LEDs On");
         } else {
             websocketSend(COMMAND_SET_LEDPWRON);
             led_power_state = false;
+            $("#id_button_ledpwr").text("LEDs Off");
         }
     });
 
