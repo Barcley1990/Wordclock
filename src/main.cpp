@@ -34,6 +34,7 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+#define WORDCLOCK_BRIGHNESS_LIMIT (127u)
 #define WORDCLOCK_USE_WIFI (true)
 #define WORDCLOCK_WIFI_TIMEOUT  (20u)
 // Set offset time in seconds to adjust for your timezone, for example:
@@ -273,7 +274,7 @@ void setup()
   delay(100);
   wordclock->begin();
   wordclock->clear();
-  wordclock->setBrightness(map(50, 0, 100, 0, 255));
+  wordclock->setBrightness(WORDCLOCK_BRIGHNESS_LIMIT);
   wordclock->show();
 
   JSONVar clockData;
