@@ -34,6 +34,7 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+#define WORDCLOCK_BRIGHNESS_LIMIT (127u)
 #define WORDCLOCK_USE_WIFI (true)
 #define WORDCLOCK_WIFI_TIMEOUT  (20u)
 // Set offset time in seconds to adjust for your timezone, for example:
@@ -54,9 +55,16 @@ const char* mdns_name = "Wordclock";
 const char* ssid      = "TARDIS"; 
 const char* password  = "82uqFnUSjUn7YL";
 
-const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096999";
-const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097999";
-const char* WEBSOCKET_COMMAND_ESP_RESET = "020999";
+const char* WEBSOCKET_COMMAND_SET_HSV = "095";
+const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
+const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
+const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
+
+const char* JSON_KEY_AMBIENT = "Light";
+const char* JSON_KEY_TIME = "Time";
+const char* JSON_KEY_VERSION = "Version";
+const char* JSON_KEY_LED_PWR_STATE = "PwrState";
+const char* JSON_KEY_BRIGHTNESS = "Brightness";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -80,13 +88,6 @@ Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-
-//Week Days
-String weekDays[7]={"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-
-//Month names
-String months[12]={"January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"};
-
 
 /***********************************************************************************************************************
  * Function definitions
@@ -200,11 +201,13 @@ void setup()
         HtmlServer.send(404, "text/plain", message);
     });
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
-    HtmlServer.serveStatic("/style.css", LittleFS, "/style.css");
-    HtmlServer.serveStatic("/index.js", LittleFS, "/index.js");
-    HtmlServer.serveStatic("/jquery.js", LittleFS, "/jquery.js");
+    HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
+    HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
+    HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
+    HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
+    HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
     HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-    HtmlServer.serveStatic("/images/colorwheel5.png", LittleFS, "/images/colorwheel5.png");
+    HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
 
 
     // Configure WebSocket Server
@@ -217,7 +220,8 @@ void setup()
         break;
       case WStype_CONNECTED:
         Serial.println("Client Connected");
-        WebSocketSend("version", &version);
+        WebSocketSend(JSON_KEY_VERSION, &version);
+       // WebSocketSend("brightness", &wordclock->getBrightness());
         break;
       case WStype_TEXT:
         Serial.print("Data Received: ");
@@ -273,8 +277,13 @@ void setup()
   delay(100);
   wordclock->begin();
   wordclock->clear();
-  wordclock->setBrightness(map(50, 0, 100, 0, 255));
+  wordclock->setBrightness(WORDCLOCK_BRIGHNESS_LIMIT);
   wordclock->show();
+
+  JSONVar clockData;
+  clockData[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
+  clockData[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
+  clockData[JSON_KEY_VERSION] = GetVersion();
 }
 
 /**
@@ -322,15 +331,7 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
-  static uint16_t hue = 0u;
-  static uint8_t value = 0u;
   float lux = wordclock->getAmbBrightness();
-  if(lux != 0.0f) {
-    //value = (uint8_t)map((uint8_t)lux,50,400,100,255);
-  }
-  value = 0xFFu;
-
-  // Read RTC time
   RtcDateTime dt = wordclock->getRTCDateTime();
 
   // Convert date-time to send to html server
@@ -340,12 +341,12 @@ void Runnable_1000_ms()
 
   // Send data to html server
   String ambBrightness = (String)lux;
-  WebSocketSend("Light", &ambBrightness);
-  WebSocketSend("Time", &datetimeBuffer);
+  WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
+  WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
 
   // change color over time
-  hue += 100u;
-  wordclock->updateColor(hue, 150, value);
+  //hue += 2u;
+  //wordclock->updateColor(hue, saturation, brightness);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
@@ -359,23 +360,38 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
+  String command;
   String data;
-
-  for(uint8_t i=0; i<length; i++) {
-    data += *(char*)payload++;
+  
+  // Stringify payload
+  for(uint8_t i=0u; i<length; i++) {
+    // First 3 characters should contain the command
+    if(i<=2u) {
+      command += *(char*)payload++;
+    }
+    // Remaining characterst contain possilbe values
+    else {
+      data += *(char*)payload++;
+    }
   }
   Serial.println(data);
 
-  if(data == WEBSOCKET_COMMAND_ESP_RESET) {
+  // Check for command
+  if(command == WEBSOCKET_COMMAND_ESP_RESET) {
     ESP.reset();
   }
-  else if(data == WEBSOCKET_COMMAND_LEDPWR_OFF) {
+  else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
     Serial.println("Turn Leds off");
     wordclock->powerOff();
   }
-  else if(data == WEBSOCKET_COMMAND_LEDPWR_ON) {
+  else if(command == WEBSOCKET_COMMAND_LEDPWR_ON) {
     Serial.println("Turn Leds on");
     wordclock->powerOn();
+  }
+  else if(command == WEBSOCKET_COMMAND_SET_HSV) {
+    Serial.println("Update HSV to: " + data);
+    wordclock->updateColor(wordclock->gamma32((int)strtol(&data[1u], NULL, 16u)));
+    wordclock->show();
   }
   else {
     Serial.println("Unknown data received...");
@@ -394,7 +410,7 @@ void WebSocketSend(String key, const void* data)
   String jsonString;
 
   // Build JSON object
-  objects[key] = *(String*)data;;
+  objects[key] = *(String*)data;
   jsonString = JSON.stringify(objects);
 
   // Broadcast to all websocket clients

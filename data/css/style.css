@@ -1,0 +1,225 @@
+@import url("https://fonts.googleapis.com/css?family=Lato:300,400|Poppins:300,400,800&display=swap");
+
+* {
+  box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  overflow: auto;
+}
+body {
+  color: #ffffff;
+  font-family: tahoma, sans-serif;
+  font-size: 13px;
+  margin: 0px;
+  overflow: auto;
+  min-width: 320px;
+  min-height: 680px;
+}
+
+.container {
+  height:100vh;
+  display: grid;
+  grid-template-rows: 70px 1fr 20px;
+  grid-template-columns: 25% 25% 25% 25%;
+  grid-template-areas: 
+      "header header header header"
+      "sidebar content content content"
+      "footer footer footer footer"
+  ;
+}
+
+.headline {
+  font-size: 22px;
+  color: white;
+  line-height: 70px;
+  text-align: center;
+  user-select: none;
+  margin-left: 50px;
+}
+
+header {
+  background: #073e59;
+  grid-area: header;
+}
+
+article {
+  background: #063146;
+  grid-area: content;
+}
+
+aside {
+  background: #042331;
+  grid-area: sidebar;
+}
+
+footer {
+  background: #042331;
+  grid-area: footer;
+}
+
+.sidebar {
+  left: 0px;
+  height: 100%;
+  transition: all .5s ease;
+}
+.sidebar header {
+  font-size: 22px;
+  color: white;
+  line-height: 70px;
+  text-align: center;
+  background: #063146;
+  user-select: none;
+}
+.sidebar ul a{
+  display: block;
+  height: 100%;
+  width: 100%;
+  line-height: 65px;
+  font-size: 20px;
+  color: white;
+  padding-left: 40px;
+  box-sizing: border-box;
+  border-bottom: 1px solid black;
+  border-top: 1px solid rgba(255,255,255,.1);
+  transition: .4s;
+}
+.sidebar ul a i{
+  margin-right: 16px;
+}
+
+ul li:hover a{
+  padding-left: 50px;
+}
+
+.inline {
+  display: inline;
+}
+
+.version {
+  color: white;
+  position: absolute;
+  bottom: 10px;
+  padding-left: 10px;
+  display: inline;
+}
+
+p {
+  color: blanchedalmond;
+}
+
+label {
+  color: blanchedalmond;
+}
+
+.button {
+  background-color: #704caf; /* Green */
+  border: none;
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  margin: 4px 2px;
+  height: 25px;
+  width:200px;
+  transition-duration: 0.2s;
+  cursor: pointer;
+  transition-duration: 0.2s;
+}
+.button:hover {
+  background-color: white; 
+  color: black; 
+  border: 2px solid #4CAF50;
+}
+
+.slider {
+  appearance: none;
+  width: 200px; /* Full-width */
+  height: 25px; /* Specified height */
+  background: rgb(76, 75, 75); /* Grey background */
+  outline: none; /* Remove outline */
+  opacity: 0.7; /* Set transparency (for mouse-over effects on hover) */
+  -webkit-transition: .2s; /* 0.2 seconds transition on hover */
+  transition: opacity .2s;
+}
+
+.flip-container {
+  width: 400px;
+  height: 400px;
+  background-color: grey;
+  perspective: 1000px;
+}
+.flip-container .flipper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.6s;
+    transform-style: preserve-3d;
+}
+.flip-container[data-flipped="true"] .flipper {
+  transform: rotateY(180deg);
+}	
+.flip-container .flipper .front, 
+.flip-container .flipper .back {
+  position: absolute;
+  display: block;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}		
+.flip-container .flipper .front {
+  z-index: 2;
+  /* for firefox 31 */
+  transform: rotateY(0deg);
+}
+.flip-container .flipper .back {
+  transform: rotateY(180deg);
+}
+
+
+
+input[type="radio"] { 
+  display: none; 
+} 
+input[type="radio"] + label { 
+  font-weight: 400; 
+  font-size: 14px; 
+} 
+input[type="radio"] + label span { 
+  display: inline-block; 
+  width: 18px; 
+  height: 18px; 
+  margin: -2px 10px 0 0; 
+  vertical-align: middle; 
+  cursor: pointer; 
+  -moz-border-radius: 50%; 
+  border-radius: 50%; 
+  border: 3px solid #ffffff; 
+} 
+input[type="radio"] + label span { 
+  background-color: #fff; 
+} 
+input[type="radio"]:checked + label { 
+  color: #333; 
+  font-weight: 700; 
+} 
+input[type="radio"]:checked + label span { 
+  border: 2px solid #ffb510; 
+  box-shadow: 2px 2px 2px rgba(0,0,0,.1); 
+} 
+input[type="radio"] + label span, 
+input[type="radio"]:checked + label span { 
+  -webkit-transition: background-color 0.24s linear; 
+  -o-transition: background-color 0.24s linear; 
+  -moz-transition: background-color 0.24s linear; 
+  transition: background-color 0.24s linear; 
+}
