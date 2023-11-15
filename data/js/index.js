@@ -56,17 +56,14 @@ $(document).ready(function() {
     // Create Color Picker (Dark)
     let dark_color_picker = 
         new ColorPickerControl({
-            use_alpha: false, 
+            useAlpha: false, 
             container: document.querySelector('.color-picker-dark-theme'), 
-            theme: 'dark'
-        });
-
-    // Create Color Picker (Light)
-    let light_color_picker = 
-        new ColorPickerControl({
-            use_alpha: false, 
-            container: document.querySelector('.color-picker-light-theme'), 
-            theme: 'light' 
+            theme: 'dark',
+            color: {
+                r: 30,
+                g: 30,
+                b: 30
+            }
         });
 
     dark_color_picker.on('change', (color) =>  {
@@ -74,12 +71,6 @@ $(document).ready(function() {
         $(".button").css("background-color", color.toHEX());
         $(".button").css("opacity", color.a / 255);
         websocketSend(COMMAND_SET_HSV, color.toHEX());
-    });
-
-    light_color_picker.on('change', (color) => {
-        debugMessage("Color Picker Light:",light_color_picker.color.fromHSVa(color.h, color.s, color.v, color.a));
-        $(".button").css("background-color", color.toHEX());
-        $(".button").css("opacity", color.a / 255);
     });
 });
 
