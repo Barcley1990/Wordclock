@@ -6,8 +6,10 @@ let debug = true;
 let led_power_state = false;
 let led_brightness = 50;
 
+
 // commands
 const COMMAND_RESET = 20;
+const COMMAND_WEBSOCKET_RDY = 21
 const COMMAND_SET_HSV = 95;
 const COMMAND_SET_LEDPWROFF = 96;
 const COMMAND_SET_LEDPWRON = 97;
@@ -24,6 +26,7 @@ const JSON_KEY_HSV = "HSV";
  * JQuery Ready
  */
 $(document).ready(function() {
+    let dark_color_picker = null;
     debugMessage("Document fully loaded")
     // Initialize websocket
     initWebsocket();
@@ -51,18 +54,21 @@ $(document).ready(function() {
         var value = $(this).val();
         $("#id_slider_value").text(value);
         debugMessage("slider", value);
+        debugMessage("picker", dark_color_picker);
+        dark_color_picker.color.v = value;
+        dark_color_picker.update();
     });
 
     // Create Color Picker (Dark)
-    let dark_color_picker = 
+    dark_color_picker = 
         new ColorPickerControl({
             useAlpha: false, 
             container: document.querySelector('.color-picker-dark-theme'), 
             theme: 'dark',
             color: {
-                r: 30,
-                g: 30,
-                b: 30
+                r: 0,
+                g: 0,
+                b: 0
             }
         });
 
@@ -87,6 +93,7 @@ function initWebsocket() {
     // On Open Handler
     websocket.onopen = function(event) {
         debugMessage("The connection with the websocket has been established.", event);
+        websocketSend(COMMAND_WEBSOCKET_RDY);
     };
 
     // On Close Handler
@@ -111,6 +118,10 @@ function initWebsocket() {
         if(obj.hasOwnProperty(JSON_KEY_TIME)) {
             obj.Time = new Date(obj.Time);
             $("#id_time").text(obj.Time);
+        }
+
+        if(obj.hasOwnProperty(JSON_KEY_HSV)) {
+            let hsvColor = obj.HSV;
         }
     };
 
