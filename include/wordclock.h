@@ -96,8 +96,8 @@ private:
     const bool _matrixHorizontal = true;
     const uint8_t _matrixAngle = 0u;
     bool _ledPowerState = false;;
-    uint8_t _brightness = 50u;
-    uint8_t _saturation = 50u;
+    uint8_t _brightness = 0xFFu/2u;
+    uint8_t _saturation = 0xFFu/2u;
     uint8_t _hue = 0u;
     uint32_t _colorHSV;
     BH1750* _lightMeter = nullptr;
@@ -138,7 +138,7 @@ public:
     // LED Functions
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     void updateColor(uint32_t color);
-    void updateColor(uint8_t h, uint8_t b, uint8_t v);
+    void updateColor(uint16_t h, uint8_t s, uint8_t v);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);

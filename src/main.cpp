@@ -59,12 +59,14 @@ const char* WEBSOCKET_COMMAND_SET_HSV = "095";
 const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
 const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
 const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
+const char* WEBSOCKET_COMMAND_WEBSOCKET_RDY = "021";
 
 const char* JSON_KEY_AMBIENT = "Light";
 const char* JSON_KEY_TIME = "Time";
 const char* JSON_KEY_VERSION = "Version";
 const char* JSON_KEY_LED_PWR_STATE = "PwrState";
 const char* JSON_KEY_BRIGHTNESS = "Brightness";
+const char* JSON_KEY_HSV_COLOR = "HSV";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -344,9 +346,6 @@ void Runnable_1000_ms()
   WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
   WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
 
-  // change color over time
-  //hue += 2u;
-  //wordclock->updateColor(hue, saturation, brightness);
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
@@ -380,6 +379,10 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   if(command == WEBSOCKET_COMMAND_ESP_RESET) {
     ESP.reset();
   }
+  else if(command == WEBSOCKET_COMMAND_WEBSOCKET_RDY) {
+    String c = String(wordclock->getHSVColor(), HEX);
+    WebSocketSend(JSON_KEY_HSV_COLOR, &c);
+  }
   else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
     Serial.println("Turn Leds off");
     wordclock->powerOff();
@@ -390,7 +393,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   }
   else if(command == WEBSOCKET_COMMAND_SET_HSV) {
     Serial.println("Update HSV to: " + data);
-    wordclock->updateColor(wordclock->gamma32((int)strtol(&data[1u], NULL, 16u)));
+    wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
     wordclock->show();
   }
   else {
@@ -406,17 +409,18 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
  */
 void WebSocketSend(String key, const void* data)
 {
+  bool retVal;
   JSONVar objects;
   String jsonString;
 
   // Build JSON object
   objects[key] = *(String*)data;
   jsonString = JSON.stringify(objects);
+  Serial.println("Sent JSON String: " + jsonString);
 
   // Broadcast to all websocket clients
-  webSocket.broadcastTXT(jsonString);
-
-  Serial.println("Sent JSON String: " + jsonString);
+  retVal = webSocket.broadcastTXT(jsonString);
+  if(retVal == false) Serial.println("Websocket broadcast failed!");
 }
 
 /**
