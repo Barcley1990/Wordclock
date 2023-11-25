@@ -151,7 +151,7 @@ label {
 .flip-container {
   width: 400px;
   height: 400px;
-  background-color: grey;
+  background-color: transparent;
   perspective: 1000px;
 }
 .flip-container .flipper {
