@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name=description content="">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+
 <title>Wordclock</title>
 
 <link rel="stylesheet" type="text/css" href="/css/style.css">
@@ -22,12 +23,12 @@
     <article>
 		<div style="margin: 20px;">
 			
-			<div style="margin-top: 5px;">
+			<div style="margin-top: 5px; font-size: 18px;" >
 				<p class="inline">Current RTC time: </p>
 				<p class="inline" id="id_time"></p>
 			</div>
 			<br>
-			<div>
+			<div style="font-size: 18px;">
 				<p class="inline"> Current ambient brightness:</p>
 				<p class="inline" id="id_ambient"></p>
 				<p class="inline"> Lux</p>
@@ -39,7 +40,7 @@
 			<div>
 				<button class="button" type="button" id="id_button_ledpwr">LEDs Off</button>
 			</div>
-			<br><br>
+			
 			
 			<div class="flip-container">
 				<div class="flipper">
@@ -55,8 +56,8 @@
 	<aside>
 		<div class="sidebar">
 			<ul>
-			 <li><a href="/index"><i class="fas fa-qrcode"></i>Dashboard</a></li>
-			 <li><a href="/update"><i class="fas fa-link"></i>Update</a></li>
+			 <li><a href="/index"><i class="fas fa-cog"></i><span class="item-label">Settings</span></a></li>
+			 <li><a href="/update"><i class="fas fa-upload"></i><span class="item-label">Update</span></a></li>
 			</ul>
 			<a class="version" id="id_version">version</a>
 		</div>

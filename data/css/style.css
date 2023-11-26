@@ -1,5 +1,64 @@
 @import url("https://fonts.googleapis.com/css?family=Lato:300,400|Poppins:300,400,800&display=swap");
 
+/* Extra small devices (phones, 600px and down) */
+@media only screen and (max-width: 600px) {
+  .item-label {
+    display: none;
+  }
+  .button {
+    width: 100%;
+  }
+  .flip-container {
+    width: 100%;
+  }
+}
+
+/* Small devices (portrait tablets and large phones, 600px and up) */
+@media only screen and (min-width: 600px) {
+  .item-label {
+    display: none;
+  }
+  .button {
+    width: 100%;
+  }
+  .flip-container {
+    width: 100%;
+  }
+}
+
+/* Medium devices (landscape tablets, 768px and up) */
+@media only screen and (min-width: 768px) {
+  .item-label {
+    display: inline;
+  }
+  .button {
+    width: 250px;
+  }
+  .flip-container {
+    width: 180px;
+  }
+}
+
+/* Large devices (laptops/desktops, 992px and up) */
+@media only screen and (min-width: 992px) {
+  .item-label {
+    display: inline;
+  }
+  .button {
+    width: 250px;
+  }
+  .flip-container {
+    width: 180px;
+  }
+}
+
+/* Extra large devices (large laptops and desktops, 1200px and up) */
+@media only screen and (min-width: 1200px) {
+  .item-label {
+    display: inline;
+  }
+}
+
 * {
   box-sizing: border-box;
   -moz-box-sizing: border-box;
@@ -125,8 +184,7 @@ label {
   display: inline-block;
   font-size: 16px;
   margin: 4px 2px;
-  height: 25px;
-  width:200px;
+  height: 40px;
   transition-duration: 0.2s;
   cursor: pointer;
   transition-duration: 0.2s;
@@ -149,7 +207,6 @@ label {
 }
 
 .flip-container {
-  width: 400px;
   height: 400px;
   background-color: transparent;
   perspective: 1000px;

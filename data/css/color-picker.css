@@ -41,7 +41,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 180px;
+    width: 100%;
     height: auto;
     min-height: 226px;
     background: var(--base-background-color);
@@ -100,7 +100,7 @@
     display: flex;
     flex-direction: row;
     height: 100%;
-    width: 8px;
+    width: 10px;
     border: 1px solid transparent;
     border-radius: 3px;
     margin-left: 10px;
