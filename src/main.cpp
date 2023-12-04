@@ -60,6 +60,7 @@ const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
 const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
 const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
 const char* WEBSOCKET_COMMAND_WEBSOCKET_RDY = "021";
+const char* WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS = "098";
 
 const char* JSON_KEY_AMBIENT = "Light";
 const char* JSON_KEY_TIME = "Time";
@@ -67,6 +68,7 @@ const char* JSON_KEY_VERSION = "Version";
 const char* JSON_KEY_LED_PWR_STATE = "PwrState";
 const char* JSON_KEY_BRIGHTNESS = "Brightness";
 const char* JSON_KEY_HSV_COLOR = "HSV";
+const char* JSON_KEY_ADPTV_BRIGHT = "AdptvBrightness";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -90,7 +92,9 @@ Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
+JSONVar clockSettings;
 
+  
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
@@ -206,9 +210,11 @@ void setup()
     HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
     HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
     HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
+    HtmlServer.serveStatic("/js/settings.js", LittleFS, "/js/settings.js");
     HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
     HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
     HtmlServer.serveStatic("/update", LittleFS, "/update.html");
+    HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
     HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
 
 
@@ -282,10 +288,11 @@ void setup()
   wordclock->setBrightness(WORDCLOCK_BRIGHNESS_LIMIT);
   wordclock->show();
 
-  JSONVar clockData;
-  clockData[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
-  clockData[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
-  clockData[JSON_KEY_VERSION] = GetVersion();
+  // Update Clock Settings
+  clockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
+  clockSettings[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
+  clockSettings[JSON_KEY_VERSION] = GetVersion();
+  clockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
 }
 
 /**
@@ -333,7 +340,10 @@ void Runnable_100_ms()
  */
 void Runnable_1000_ms()
 {
+  // Get Ambient Brightness
   float lux = wordclock->getAmbBrightness();
+
+  // Get RTC Time
   RtcDateTime dt = wordclock->getRTCDateTime();
 
   // Convert date-time to send to html server
@@ -341,11 +351,19 @@ void Runnable_1000_ms()
   sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d",
     dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
 
-  // Send data to html server
+  // Send data to client via web socket
   String ambBrightness = (String)lux;
   WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
   WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
 
+  // Check if adaptive brightness is enabled
+  if(clockSettings.hasPropertyEqual(JSON_KEY_ADPTV_BRIGHT, "true") == true) {
+    uint32_t rgb = wordclock->getHSVColor();
+
+   // wordclock->updateColor(adaptvColor);
+  }
+
+  // Update Wordclock Time
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
@@ -395,6 +413,9 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     Serial.println("Update HSV to: " + data);
     wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
     wordclock->show();
+  }
+  else if(command == WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS) {
+    clockSettings[JSON_KEY_ADPTV_BRIGHT] = data;
   }
   else {
     Serial.println("Unknown data received...");

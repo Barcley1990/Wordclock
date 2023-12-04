@@ -100,6 +100,7 @@ private:
     uint8_t _saturation = 0xFFu/2u;
     uint8_t _hue = 0u;
     uint32_t _colorHSV;
+    uint32_t _colorHSVGamma32;
     BH1750* _lightMeter = nullptr;
     ThreeWire* _myWire = nullptr;
     RtcDS1302<ThreeWire>* _rtc = nullptr;
@@ -139,6 +140,7 @@ public:
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     void updateColor(uint32_t color);
     void updateColor(uint16_t h, uint8_t s, uint8_t v);
+    uint8_t getHsvColor_Value(uint32_t hsv);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);

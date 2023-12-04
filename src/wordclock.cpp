@@ -24,7 +24,8 @@ Wordclock::Wordclock(ILayout* layout) :
   Serial.println("Initializing Wordclock");
 
   // Initialize color on startup (Apply gamma correction)
-  _colorHSV = gamma32(ColorHSV(Color::MAGENTA, _saturation, _brightness));
+  _colorHSV = ColorHSV(Color::MAGENTA, _saturation, _brightness);
+  _colorHSVGamma32 = gamma32(_colorHSV);
 
   // Apply layout
   _layout = layout;
@@ -83,29 +84,29 @@ void Wordclock::powerOn()
  */
 void Wordclock::setTime(uint8_t h, uint8_t m)
 {
+  if(_layout == nullptr) return;
+
   uint8_t min = m % 10u;
   uint8_t rows = _layout->getMatrixRows();
   uint8_t cols = _layout->getMatrixCols();
   uint8_t numleds = rows * cols;
   bool isFullHour = false;
 
-  //Set min pixels
+  // Set min pixels
   if(min > 5u) min -= 5u;
   switch (min)
   {
-    case 4: setPixelColor(numleds+0u, _colorHSV);
-    case 3: setPixelColor(numleds+1u, _colorHSV);
-    case 2: setPixelColor(numleds+2u, _colorHSV);
-    case 1: setPixelColor(numleds+3u, _colorHSV);
+    case 4: setPixelColor(numleds+0u, _colorHSVGamma32);
+    case 3: setPixelColor(numleds+1u, _colorHSVGamma32);
+    case 2: setPixelColor(numleds+2u, _colorHSVGamma32);
+    case 1: setPixelColor(numleds+3u, _colorHSVGamma32);
     default: break;
   }
 
-  if(_layout == nullptr) return;
-  // Update "matrix" depending on the loaded layout
-  clearFrame();
-  _layout->setMatrixTerm(Terms::ESIST);
+  _layout->clearMatrix();
 
-  // Set Minutes
+  // Set Time
+   _layout->setMatrixTerm(Terms::ESIST);
   switch (m)
   {
     case 0: isFullHour = true; break;
@@ -178,9 +179,8 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 42:
     case 43:
     case 44:
-      _layout->setMatrixTerm(Terms::ZEHN_1);
-      _layout->setMatrixTerm(Terms::NACH);
-      _layout->setMatrixTerm(Terms::HALB);
+      _layout->setMatrixTerm(Terms::ZWANZIG);
+      _layout->setMatrixTerm(Terms::VOR);
       h += 1; //Offset Hour
       break;
     case 45:
@@ -188,7 +188,7 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     case 47:
     case 48:
     case 49:
-      if(random(0u,1u) == 1u)
+      if(random(2u) == 1u)
       {
         _layout->setMatrixTerm(Terms::DREIVIRTEL);
       }
@@ -220,11 +220,16 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     default: break;
   }
 
+  Terms oneOClock = Terms::EINS;
+  if(isFullHour == true) {
+    oneOClock = Terms::EIN;
+  }
+
   // Set Hours
   switch (h % 12u)
   {
     case 0: _layout->setMatrixTerm(Terms::ZWOELF); break;
-    case 1: _layout->setMatrixTerm(Terms::EIN); break;
+    case 1: _layout->setMatrixTerm(oneOClock); break;
     case 2: _layout->setMatrixTerm(Terms::ZWEI); break;
     case 3: _layout->setMatrixTerm(Terms::DREI_2); break;
     case 4: _layout->setMatrixTerm(Terms::VIER_2); break;
@@ -308,17 +313,9 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
 
 void Wordclock::updateColor(uint32_t color)
 {
-  uint8_t rows = _layout->getMatrixRows();
-  uint8_t cols = _layout->getMatrixCols();
-  uint8_t numleds = rows * cols;
-  
   // Update HSV color in case function was called from outside
   _colorHSV = color;
-
-  setPixelColor(numleds+0u, _colorHSV);
-  setPixelColor(numleds+1u, _colorHSV);
-  setPixelColor(numleds+2u, _colorHSV);
-  setPixelColor(numleds+3u, _colorHSV);
+  _colorHSVGamma32 = gamma32(_colorHSV);
 
   for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
   {
@@ -326,7 +323,7 @@ void Wordclock::updateColor(uint32_t color)
     {
       if(_layout->getMatrixPixel(x,y) == true)
       {
-        setPixelColorXY(x, y, _colorHSV);
+        setPixelColorXY(x, y, _colorHSVGamma32);
       }
       else
       {
@@ -346,7 +343,8 @@ void Wordclock::updateColor(uint32_t color)
 void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
 {
   // Apply gamma correction 
-  _colorHSV = gamma32(ColorHSV(h, s, v));
+  _colorHSV = ColorHSV(h, s, v);
+  _colorHSVGamma32 = gamma32(_colorHSV);
 
   for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
   {
@@ -354,7 +352,7 @@ void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
     {
       if(_layout->getMatrixPixel(x,y) == true)
       {
-        setPixelColorXY(x,y,_colorHSV);
+        setPixelColorXY(x,y,_colorHSVGamma32);
       }
       else
       {
@@ -362,6 +360,21 @@ void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
       }
     }
   }
+}
+
+/**
+ * @brief 
+ * 
+ * @return uint8_t 
+ */
+uint8_t Wordclock::getHsvColor_Value(uint32_t hsv) 
+{
+  uint8_t r = (hsv >> 16u) & 0xFFu;
+  uint8_t g = (hsv >> 8u) & 0xFFu;
+  uint8_t b = hsv & 0xFFu;
+
+  uint8_t max = r > g ? (r > b ? r : b) : (g > b ? g : b);
+  return max;
 }
 
 /**
