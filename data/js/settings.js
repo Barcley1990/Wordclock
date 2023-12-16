@@ -15,6 +15,7 @@ $(document).ready(function() {
     });
   
     // Setup Button Handler
+    led_power_state = $("#id_button_ledpwr").text;
     $("#id_button_ledpwr").click(function() {
         if(led_power_state===false){
             websocketSend(COMMAND_SET_LEDPWROFF);
@@ -39,5 +40,3 @@ $(document).ready(function() {
     });
 
 });
-
-

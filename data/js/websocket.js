@@ -51,6 +51,15 @@ function initWebsocket() {
             $("#id_ambient").text(obj.Light);
         }
 
+        if(obj.hasOwnProperty(JSON_KEY_LED_PWR_STATE)) {
+            state = obj.PwrState;
+            if(state===true) {
+                $("#id_button_ledpwr").text("LEDs Off");
+            } else {
+                $("#id_button_ledpwr").text("LEDs On");
+            }
+        }
+
         if(obj.hasOwnProperty(JSON_KEY_TIME)) {
             obj.Time = new Date(obj.Time);
             $("#id_time").text(obj.Time);
