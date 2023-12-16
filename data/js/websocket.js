@@ -74,7 +74,7 @@ function initWebsocket() {
  */
 function websocketSend(command, addData = "") {
 	var data = nstr(command) + addData;
-	debugMessage("Send data: '" + data + "'");
+	debugMessage("Websocket send data: '" + data + "'");
 	websocket.send(data);
 }
 

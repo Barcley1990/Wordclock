@@ -207,14 +207,16 @@ void setup()
         HtmlServer.send(404, "text/plain", message);
     });
     HtmlServer.serveStatic("/", LittleFS, "/index.html");
+    HtmlServer.serveStatic("/index", LittleFS, "/index.html");
+    HtmlServer.serveStatic("/update", LittleFS, "/update.html");
+    HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
     HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
     HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
     HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
     HtmlServer.serveStatic("/js/settings.js", LittleFS, "/js/settings.js");
     HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
+    HtmlServer.serveStatic("/js/websocket.js", LittleFS, "/js/websocket.js");
     HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
-    HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-    HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
     HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
 
 
