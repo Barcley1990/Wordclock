@@ -363,21 +363,6 @@ void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
 }
 
 /**
- * @brief 
- * 
- * @return uint8_t 
- */
-uint8_t Wordclock::getHsvColor_Value(uint32_t hsv) 
-{
-  uint8_t r = (hsv >> 16u) & 0xFFu;
-  uint8_t g = (hsv >> 8u) & 0xFFu;
-  uint8_t b = hsv & 0xFFu;
-
-  uint8_t max = r > g ? (r > b ? r : b) : (g > b ? g : b);
-  return max;
-}
-
-/**
  * @brief Check RTC
  *
  * @return RtcDateTime

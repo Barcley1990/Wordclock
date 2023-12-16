@@ -358,9 +358,7 @@ void Runnable_1000_ms()
 
   // Check if adaptive brightness is enabled
   if(clockSettings.hasPropertyEqual(JSON_KEY_ADPTV_BRIGHT, "true") == true) {
-    uint32_t rgb = wordclock->getHSVColor();
 
-   // wordclock->updateColor(adaptvColor);
   }
 
   // Update Wordclock Time

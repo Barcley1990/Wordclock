@@ -140,7 +140,6 @@ public:
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     void updateColor(uint32_t color);
     void updateColor(uint16_t h, uint8_t s, uint8_t v);
-    uint8_t getHsvColor_Value(uint32_t hsv);
     
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);
