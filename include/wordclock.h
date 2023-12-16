@@ -38,6 +38,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #include "mcal.h"
 #include "layouts/ilayout.h"
 
+#define DEBUG_MODE              (false)
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
 #define MATRIX_ROTATION         (2u) //0=0° 1=90° 2=180° 3=270°
@@ -77,6 +78,14 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define BH1750_ADDR             (0x23u)
 
 #define COUNTOF(a) (sizeof(a) / sizeof(a[0]))
+#if (DEBUG_MODE == true)
+#include "Arduino.h"
+#define DEBUG_MSG_LN(s) Serial.println(s);
+#define DEBUG_MSG(s) Serial.print(s);
+#else
+#define DEBUG_MSG_LN(s)
+#define DEBUG_MSG(s)
+#endif
 
 class Color
 {

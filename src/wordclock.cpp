@@ -21,7 +21,7 @@
 Wordclock::Wordclock(ILayout* layout) :
   Adafruit_NeoPixel((layout->getMatrixCols()*layout->getMatrixRows()) + 4u , MCAL_LED_DIN_PIN)
 {
-  Serial.println("Initializing Wordclock");
+  DEBUG_MSG_LN("Initializing Wordclock");
 
   // Initialize color on startup (Apply gamma correction)
   _colorHSV = ColorHSV(Color::MAGENTA, _saturation, _brightness);
@@ -277,8 +277,8 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
   uint16_t i = 0;
   //Serial.print(x);
   //Serial.print(":");
-  //Serial.println(y);
-  //Serial.println(c);
+  //DEBUG_MSG_LN(y);
+  //DEBUG_MSG_LN(c);
 
   if(_matrixSerpentineLayout == true)
   {
@@ -291,7 +291,7 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
         //Serial.print("odd v: ");
         //Serial.print(i);
         //Serial.print("->odd h: ");
-        //Serial.println(i);
+        //DEBUG_MSG_LN(i);
       }
       else
       {
@@ -301,11 +301,11 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
         //Serial.print(i);
         i += -2*(5-x);
         //Serial.print("->even h: ");
-        //Serial.println(i);
+        //DEBUG_MSG_LN(i);
       }
 
     }
-    //Serial.println("");
+    //DEBUG_MSG_LN("");
   }
 
   setPixelColor(i, c);
@@ -372,7 +372,7 @@ void Wordclock::checkRTCTime()
   RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
   RtcDateTime now;
 
-  Serial.println("Checking RTC...");
+  DEBUG_MSG_LN("Checking RTC...");
   if(_rtc != nullptr)
   {
     if (!_rtc->IsDateTimeValid())
@@ -381,35 +381,35 @@ void Wordclock::checkRTCTime()
         //    1) first time you ran and the device wasn't running yet
         //    2) the battery on the device is low or even missing
 
-        Serial.println("RTC lost confidence in the DateTime!");
+        DEBUG_MSG_LN("RTC lost confidence in the DateTime!");
         _rtc->SetDateTime(compiled);
     }
 
     if (_rtc->GetIsWriteProtected())
     {
-        Serial.println("RTC was write protected, enabling writing now");
+        DEBUG_MSG_LN("RTC was write protected, enabling writing now");
         _rtc->SetIsWriteProtected(false);
     }
 
     if (!_rtc->GetIsRunning())
     {
-        Serial.println("RTC was not actively running, starting now");
+        DEBUG_MSG_LN("RTC was not actively running, starting now");
         _rtc->SetIsRunning(true);
     }
 
     now =  _rtc->GetDateTime();
     if (now < compiled)
     {
-        Serial.println("RTC is older than compile time! (Updating DateTime)");
+        DEBUG_MSG_LN("RTC is older than compile time! (Updating DateTime)");
         _rtc->SetDateTime(compiled);
     }
     else if (now > compiled)
     {
-        Serial.println("RTC is newer than compile time. (this is expected)");
+        DEBUG_MSG_LN("RTC is newer than compile time. (this is expected)");
     }
     else if (now == compiled)
     {
-        Serial.println("RTC is the same as compile time! (not expected but all is fine)");
+        DEBUG_MSG_LN("RTC is the same as compile time! (not expected but all is fine)");
     }
     Serial.print("RTC time: ");
     printDateTime(now);
@@ -418,7 +418,7 @@ void Wordclock::checkRTCTime()
   }
   else
   {
-    Serial.println("Error");
+    DEBUG_MSG_LN("Error");
   }
 }
 
@@ -432,7 +432,7 @@ RtcDateTime Wordclock::getRTCDateTime()
   RtcDateTime dummy(0);
   // Check if object is valid
   if(_rtc == nullptr) {
-    Serial.println("Retreiving time failed");
+    DEBUG_MSG_LN("Retreiving time failed");
     return dummy;
   }
   // return date time object
@@ -448,7 +448,7 @@ void Wordclock::setRTCDateTime(RtcDateTime dt)
 {
   // Check if object is valid
   if(_rtc == nullptr) {
-    Serial.println("Setting time failed!");
+    DEBUG_MSG_LN("Setting time failed!");
     return;
   }
   // set date time object
@@ -493,5 +493,5 @@ void Wordclock::printDateTime(const RtcDateTime& dt)
           dt.Hour(),
           dt.Minute(),
           dt.Second() );
-  Serial.println(datestring);
+  DEBUG_MSG_LN(datestring);
 }

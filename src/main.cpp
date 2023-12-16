@@ -117,14 +117,14 @@ void setup()
   delay(100);
 
   // Print software version
-  Serial.println("");
-  Serial.println("");
-  Serial.println(header);
-  Serial.println("");
-  Serial.println("");
-  Serial.println("--------------------------------------");
-  Serial.print("\nVersion: ");
-  Serial.println(GetVersion());
+  DEBUG_MSG_LN("");
+  DEBUG_MSG_LN("");
+  DEBUG_MSG_LN(header);
+  DEBUG_MSG_LN("");
+  DEBUG_MSG_LN("");
+  DEBUG_MSG_LN("--------------------------------------");
+  DEBUG_MSG("\nVersion: ");
+  DEBUG_MSG_LN(GetVersion());
   Serial.printf("Chip ID         : %08X\n", ESP.getChipId());
   Serial.printf("Flash ID        : %08X\n\n", ESP.getFlashChipId());
   Serial.printf("CPU Speed       : %u MHz \n\n", ESP.getCpuFreqMHz());
@@ -140,56 +140,56 @@ void setup()
   Serial.printf("Free Sketch Size: %u Byte \n\n", ESP.getFreeSketchSpace());
 
   Serial.printf("SDK Version     : %s\n", ESP.getSdkVersion());
-  Serial.print("RESET Info      : ");
-  Serial.println(ESP.getResetInfo());
-  Serial.print("COMPILED        : ");
-  Serial.print(__DATE__);
-  Serial.print(" ");
-  Serial.println(__TIME__);
+  DEBUG_MSG("RESET Info      : ");
+  DEBUG_MSG_LN(ESP.getResetInfo());
+  DEBUG_MSG("COMPILED        : ");
+  DEBUG_MSG(__DATE__);
+  DEBUG_MSG(" ");
+  DEBUG_MSG_LN(__TIME__);
 
-  Serial.println("--------------------------------------");
-  Serial.println("Ende Setup");
-  Serial.println("--------------------------------------");
-  Serial.println("");
+  DEBUG_MSG_LN("--------------------------------------");
+  DEBUG_MSG_LN("Ende Setup");
+  DEBUG_MSG_LN("--------------------------------------");
+  DEBUG_MSG_LN("");
   delay(100);
 
 
 #if (WORDCLOCK_USE_WIFI == true)
   // Initialize LittleFS
-  Serial.print("Try to initialize LittleFS... ");
+  DEBUG_MSG("Try to initialize LittleFS... ");
   //LittleFS.format();
   if (!LittleFS.begin())
   {
-    Serial.println("-> An error has occurred while mounting LittleFS. End Setup!\n");
+    DEBUG_MSG_LN("-> An error has occurred while mounting LittleFS. End Setup!\n");
     return;
   }
   else
   {
-    Serial.println("-> LittleFS mounted successfully\n");
+    DEBUG_MSG_LN("-> LittleFS mounted successfully\n");
   }
 
   // Connect to the network
   WiFi.begin(ssid, password);             
-  Serial.print("Connecting to ");
-  Serial.print(ssid); Serial.println(" ...");
+  DEBUG_MSG("Connecting to ");
+  DEBUG_MSG(ssid); DEBUG_MSG_LN(" ...");
 
   int i = 0;
   // Wait for the Wi-Fi to connect
   while (WiFi.status() != WL_CONNECTED) { 
     delay(1000);
-    Serial.print(++i); Serial.print(' ');
+    DEBUG_MSG(++i); DEBUG_MSG(' ');
   }
 
   // Send the IP address of the ESP8266 to the computer
-  Serial.println('\n');
-  Serial.println("Connection established!");  
-  Serial.print("IP address:\t");
-  Serial.println(WiFi.localIP());         
+  DEBUG_MSG_LN('\n');
+  DEBUG_MSG_LN("Connection established!");  
+  DEBUG_MSG("IP address:\t");
+  DEBUG_MSG_LN(WiFi.localIP());         
 
   {
     // Successful connected to local wifi...
-    Serial.print("Successfully connected! IP is: ");
-    Serial.println(WiFi.localIP());
+    DEBUG_MSG("Successfully connected! IP is: ");
+    DEBUG_MSG_LN(WiFi.localIP());
 
     // Configure html server
     HtmlServer.onNotFound([](){
@@ -226,15 +226,15 @@ void setup()
       switch (type)
       {
       case WStype_DISCONNECTED:
-        Serial.println("Client Disconnected");
+        DEBUG_MSG_LN("Client Disconnected");
         break;
       case WStype_CONNECTED:
-        Serial.println("Client Connected");
+        DEBUG_MSG_LN("Client Connected");
         WebSocketSend(JSON_KEY_VERSION, &version);
        // WebSocketSend("brightness", &wordclock->getBrightness());
         break;
       case WStype_TEXT:
-        Serial.print("Data Received: ");
+        DEBUG_MSG("Data Received: ");
         WebSocketReceive(payload, length);
         break;
         //-Do Nothing-
@@ -254,12 +254,12 @@ void setup()
     HtmlServer.begin();
     webSocket.begin();
     if (MDNS.begin(mdns_name)) {
-      Serial.print("DNS started: ");
-      Serial.println("http://" + String(mdns_name) + ".local/");
+      DEBUG_MSG("DNS started: ");
+      DEBUG_MSG_LN("http://" + String(mdns_name) + ".local/");
     }
     MDNS.addService("http", "tcp", 80);
 
-    Serial.print("HTTP server started on port 80: ");
+    DEBUG_MSG("HTTP server started on port 80: ");
     Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
     WiFi_Setup_Successful = true;
   }
@@ -391,7 +391,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
       data += *(char*)payload++;
     }
   }
-  Serial.println(data);
+  DEBUG_MSG_LN(data);
 
   // Check for command
   if(command == WEBSOCKET_COMMAND_ESP_RESET) {
@@ -402,15 +402,15 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     WebSocketSend(JSON_KEY_HSV_COLOR, &c);
   }
   else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
-    Serial.println("Turn Leds off");
+    DEBUG_MSG_LN("Turn Leds off");
     wordclock->powerOff();
   }
   else if(command == WEBSOCKET_COMMAND_LEDPWR_ON) {
-    Serial.println("Turn Leds on");
+    DEBUG_MSG_LN("Turn Leds on");
     wordclock->powerOn();
   }
   else if(command == WEBSOCKET_COMMAND_SET_HSV) {
-    Serial.println("Update HSV to: " + data);
+    DEBUG_MSG_LN("Update HSV to: " + data);
     wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
     wordclock->show();
   }
@@ -418,7 +418,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     clockSettings[JSON_KEY_ADPTV_BRIGHT] = data;
   }
   else {
-    Serial.println("Unknown data received...");
+    DEBUG_MSG_LN("Unknown data received...");
   }
 }
 
@@ -437,11 +437,11 @@ void WebSocketSend(String key, const void* data)
   // Build JSON object
   objects[key] = *(String*)data;
   jsonString = JSON.stringify(objects);
-  Serial.println("Sent JSON String: " + jsonString);
+  DEBUG_MSG_LN("Sent JSON String: " + jsonString);
 
   // Broadcast to all websocket clients
   retVal = webSocket.broadcastTXT(jsonString);
-  if(retVal == false) Serial.println("Websocket broadcast failed!");
+  if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
 
 /**
@@ -450,7 +450,7 @@ void WebSocketSend(String key, const void* data)
  */
 void BootPinCbk()
 {
-  Serial.println("-----Rebooting Wordclock-----");
+  DEBUG_MSG_LN("-----Rebooting Wordclock-----");
   wordclock->powerOff();
   delay(100);
   //ESP.reset();
