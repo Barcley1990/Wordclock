@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name=description content="">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Settings</title>
+
+<link rel="stylesheet" type="text/css" href="/css/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
+</head>
+
+<body>
+
+<div class="container">
+	<header>
+		<span class="headline" >Wordclock</span> 
+	</header>
+		
+    <article>
+        <div class="settings" style="margin: 20px;">
+        
+            <div>
+                <button class="button" type="button" id="id_button_reset">ESP Reset</button>
+            </div>
+            <div>
+                <button class="button" type="button" id="id_button_ledpwr">LEDs Off</button>
+            </div>
+            <br>
+            <div>
+                <input type="checkbox" id="setting_adapt_brightness" name="adaptive_brightness" value=1>
+                <label for="adaptive_brightness"> Adaptive Brightness</label><br>
+                <div class="settings_adaptive_brightness"> 
+                    <input type="number" id="settings_adapt_brightness_val0" name="val0">
+                    <label for="val0"> Val0 </label>
+                    <input type="number" id="settings_adapt_brightness_val1" name="val1">
+                    <label for="val1"> Val1 </label>
+                </div>
+            </div>
+        </div>
+	</article>
+    
+	<aside>
+		<div class="sidebar">
+			<ul>
+             <li><a href="/index.html"><i class="fas fa-home"></i><span class="item-label">Home</span></a></li>
+			 <li><a href="/settings.html"><i class="fas fa-cog"></i><span class="item-label">Settings</span></a></li>
+			 <li><a href="/update"><i class="fas fa-upload"></i><span class="item-label">Update</span></a></li>
+			</ul>
+			<a class="version" id="id_version">version</a>
+		</div>
+	</aside>
+
+
+    <footer>
+		<p></p>
+	</footer>
+</div>
+
+<script type="text/javascript" src="/js/jquery.js"></script>
+<script type="text/javascript" src="/js/websocket.js"></script>
+<script type="text/javascript" src="/js/settings.js"></script>
+
+	
+	
+</body>
+</html>
+
