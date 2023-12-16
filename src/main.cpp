@@ -359,8 +359,8 @@ void Runnable_1000_ms()
   // Check if adaptive brightness is enabled
   if(clockSettings.hasPropertyEqual(JSON_KEY_ADPTV_BRIGHT, "true") == true) {
     uint32_t rgb = wordclock->getHSVColor();
-
-   // wordclock->updateColor(adaptvColor);
+    uint8_t value = map((int)lux, 0, 100, 30, 100);
+    wordclock->updateColor(rgb);
   }
 
   // Update Wordclock Time
@@ -410,8 +410,15 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     wordclock->powerOn();
   }
   else if(command == WEBSOCKET_COMMAND_SET_HSV) {
-    Serial.println("Update HSV to: " + data);
-    wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
+    uint32_t hsv = (int)strtol(&data[1u], NULL, 16u);
+    uint16_t h;
+    uint8_t s,v;
+    h = (hsv >> 16u) & 0xFFFFu;
+    s = (hsv >> 8u) & 0xFFu;
+    v = hsv & 0xFFu;
+    //Serial.println("Update HSV to: " + data);
+    //wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
+    wordclock->updateColor(h, s, v);
     wordclock->show();
   }
   else if(command == WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS) {

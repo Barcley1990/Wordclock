@@ -280,3 +280,7 @@ input[type="radio"]:checked + label span {
   -moz-transition: background-color 0.24s linear; 
   transition: background-color 0.24s linear; 
 }
+
+.settings_adaptive_brightness {
+  display: none;
+}
