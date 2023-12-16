@@ -38,7 +38,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #include "mcal.h"
 #include "layouts/ilayout.h"
 
-#define DEBUG_MODE              (false)
+#define DEBUG_MODE              (true)
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
 #define MATRIX_ROTATION         (2u) //0=0° 1=90° 2=180° 3=270°

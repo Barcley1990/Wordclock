@@ -77,6 +77,7 @@ void Runnable_100_ms();
 void Runnable_1000_ms();
 void WebSocketReceive(uint8_t* payload, uint8_t length);
 void WebSocketSend(String key, const void* data);
+void WebSocketSend(const JSONVar obj);
 void BootPinCbk();
 String GetVersion();
 
@@ -173,12 +174,14 @@ void setup()
   DEBUG_MSG("Connecting to ");
   DEBUG_MSG(ssid); DEBUG_MSG_LN(" ...");
 
+#if DEBUG_MODE
   int i = 0;
   // Wait for the Wi-Fi to connect
   while (WiFi.status() != WL_CONNECTED) { 
     delay(1000);
     DEBUG_MSG(++i); DEBUG_MSG(' ');
   }
+#endif 
 
   // Send the IP address of the ESP8266 to the computer
   DEBUG_MSG_LN('\n');
@@ -230,8 +233,7 @@ void setup()
         break;
       case WStype_CONNECTED:
         DEBUG_MSG_LN("Client Connected");
-        WebSocketSend(JSON_KEY_VERSION, &version);
-       // WebSocketSend("brightness", &wordclock->getBrightness());
+        WebSocketSend(clockSettings);
         break;
       case WStype_TEXT:
         DEBUG_MSG("Data Received: ");
@@ -293,6 +295,7 @@ void setup()
   // Update Clock Settings
   clockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
   clockSettings[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
+  clockSettings[JSON_KEY_HSV_COLOR] = wordclock->getHSVColor();
   clockSettings[JSON_KEY_VERSION] = GetVersion();
   clockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
 }
@@ -360,8 +363,9 @@ void Runnable_1000_ms()
 
   // Check if adaptive brightness is enabled
   if(clockSettings.hasPropertyEqual(JSON_KEY_ADPTV_BRIGHT, "true") == true) {
-
+    wordclock->updateColor(0);
   }
+  
 
   // Update Wordclock Time
   wordclock->clear();
@@ -437,6 +441,24 @@ void WebSocketSend(String key, const void* data)
   // Build JSON object
   objects[key] = *(String*)data;
   jsonString = JSON.stringify(objects);
+  DEBUG_MSG_LN("Sent JSON String: " + jsonString);
+
+  // Broadcast to all websocket clients
+  retVal = webSocket.broadcastTXT(jsonString);
+  if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
+}
+
+/**
+ * @brief Broadcast WebSocket Data
+ *
+ * @param obj JSON Object
+ */
+void WebSocketSend(const JSONVar obj)
+{
+  bool retVal;
+  String jsonString;
+
+  jsonString = JSON.stringify(obj);
   DEBUG_MSG_LN("Sent JSON String: " + jsonString);
 
   // Broadcast to all websocket clients
