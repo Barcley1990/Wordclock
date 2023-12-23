@@ -10,6 +10,7 @@ const COMMAND_SET_LEDPWRON = 97;
 const COMMAND_SET_ADPTV_BRIGHNTESS = 98;
 
 // JSON Keys
+const JSON_KEY_COMMAND = "CMD";
 const JSON_KEY_AMBIENT = "Light";
 const JSON_KEY_TIME = "Time";
 const JSON_KEY_VERSION = "Version";
@@ -29,7 +30,8 @@ function initWebsocket() {
     // On Open Handler
     websocket.onopen = function(event) {
         debugMessage("The connection with the websocket has been established.", event);
-        websocketSend(COMMAND_WEBSOCKET_RDY);
+        const obj = {"CMD": COMMAND_WEBSOCKET_RDY};
+        websocketSend(obj);
     };
 
     // On Close Handler
@@ -42,6 +44,12 @@ function initWebsocket() {
         let obj = JSON.parse(event.data);
         
         debugMessage("WebSocket data arrived", obj);
+
+        if(obj.hasOwnProperty("DEBUG_MSG")) {
+            let msg = obj.DEBUG_MSG;
+            var myTextArea = $('#console');
+            myTextArea.val(myTextArea.val() + '\n'+msg);
+        }
 
         if(obj.hasOwnProperty(JSON_KEY_VERSION)) {
             $("#id_version").text(obj.Version);
@@ -65,11 +73,12 @@ function initWebsocket() {
             $("#id_time").text(obj.Time);
         }
 
-        if(obj.hasOwnProperty(JSON_KEY_HSV)) {
-            debugMessage("Color Received: ", obj.HSV);
-            let hsvColor = obj.HSV;
-            dark_color_picker.color.fromHEX(hsvColor);
-            
+        if (typeof dark_color_picker !== 'undefined') {
+            if(obj.hasOwnProperty(JSON_KEY_HSV)) {
+                let hsvColor = obj.HSV;
+                hsvColor = hsvColor.toString(16);
+                dark_color_picker.color.fromHEX(hsvColor);
+            }
         }
     };
 
@@ -81,10 +90,10 @@ function initWebsocket() {
 /**
  * websocketSend
  */
-function websocketSend(command, addData = "") {
-	var data = nstr(command) + addData;
-	debugMessage("Websocket send data: '" + data + "'");
-	websocket.send(data);
+function websocketSend(command) {
+    obj = JSON.stringify(command)
+	debugMessage("Websocket send data: '" + obj + "'");
+	websocket.send(obj);
 }
 
 /**

@@ -29,46 +29,46 @@
 #include <WebSocketsServer.h>
 #include <ESP8266HTTPUpdateServer.h>
 #include <LittleFS.h>
-#include <Arduino_JSON.h>
+#include <ArduinoJson.h>
 #include <RtcDateTime.h>
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
 #define WORDCLOCK_BRIGHNESS_LIMIT (127u)
-#define WORDCLOCK_USE_WIFI (true)
-#define WORDCLOCK_WIFI_TIMEOUT  (20u)
+#define WORDCLOCK_USE_WIFI        (true)
+#define WORDCLOCK_WIFI_TIMEOUT    (20u)
 // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT +8 = 28800
   // GMT -1 = -3600
   // GMT 0 = 0
-#define WORDCLOCK_TIME_OFFSET (3600u)
+#define WORDCLOCK_TIME_OFFSET     (3600u)
 
 /***********************************************************************************************************************
  * Private Variables
  ***********************************************************************************************************************/
 static bool WiFi_Setup_Successful = false;
-static uint32_t old_time_100 = 0u;
-static uint32_t old_time_1000 = 0u;
 
 const char* mdns_name = "Wordclock";
 const char* ssid      = "TARDIS"; 
 const char* password  = "82uqFnUSjUn7YL";
 
-const char* WEBSOCKET_COMMAND_SET_HSV = "095";
-const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
-const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
-const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
-const char* WEBSOCKET_COMMAND_WEBSOCKET_RDY = "021";
-const char* WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS = "098";
+const uint8_t WEBSOCKET_COMMAND_SET_HSV = 95;
+const uint8_t WEBSOCKET_COMMAND_LEDPWR_OFF = 96;
+const uint8_t WEBSOCKET_COMMAND_LEDPWR_ON = 97;
+const uint8_t WEBSOCKET_COMMAND_ESP_RESET = 20;
+const uint8_t WEBSOCKET_COMMAND_WEBSOCKET_RDY = 21;
+const uint8_t WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS = 98;
 
-const char* JSON_KEY_AMBIENT = "Light";
-const char* JSON_KEY_TIME = "Time";
-const char* JSON_KEY_VERSION = "Version";
-const char* JSON_KEY_LED_PWR_STATE = "PwrState";
-const char* JSON_KEY_BRIGHTNESS = "Brightness";
-const char* JSON_KEY_HSV_COLOR = "HSV";
-const char* JSON_KEY_ADPTV_BRIGHT = "AdptvBrightness";
+const char* JSON_KEY_COMMAND          = "CMD";
+const char* JSON_KEY_AMBIENT          = "Light";
+const char* JSON_KEY_TIME             = "Time";
+const char* JSON_KEY_VERSION          = "Version";
+const char* JSON_KEY_WIFI_STATUS      = "WiFiStatus";
+const char* JSON_KEY_LED_PWR_STATE    = "PwrState";
+const char* JSON_KEY_BRIGHTNESS       = "Brightness";
+const char* JSON_KEY_HSV_COLOR        = "HSV";
+const char* JSON_KEY_ADPTV_BRIGHT     = "AdptvBrightness";
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -76,8 +76,11 @@ const char* JSON_KEY_ADPTV_BRIGHT = "AdptvBrightness";
 void Runnable_100_ms();
 void Runnable_1000_ms();
 void WebSocketReceive(uint8_t* payload, uint8_t length);
-void WebSocketSend(String key, const void* data);
-void WebSocketSend(const JSONVar obj);
+//void WebSocketSend(String key, const void* data);
+template <typename T> 
+void WebSocketSend(const char *key, T value);
+void WebSocketSend(const JsonDocument &doc);
+void WebSocketSend(String s);
 void BootPinCbk();
 String GetVersion();
 
@@ -93,8 +96,12 @@ Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
-JSONVar clockSettings;
-
+const size_t size = 512;
+StaticJsonDocument<size> ClockSettings;
+#if (DEBUG_MODE)
+StaticJsonDocument<512> DebugMsg;
+static inline void debugWebSocket(String msg);
+#endif
   
 /***********************************************************************************************************************
  * Function definitions
@@ -226,6 +233,7 @@ void setup()
     // Configure WebSocket Server
     webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
       String version = GetVersion();
+      String settings;
       switch (type)
       {
       case WStype_DISCONNECTED:
@@ -233,7 +241,7 @@ void setup()
         break;
       case WStype_CONNECTED:
         DEBUG_MSG_LN("Client Connected");
-        WebSocketSend(clockSettings);
+        debugWebSocket("Websocket Connected!");
         break;
       case WStype_TEXT:
         DEBUG_MSG("Data Received: ");
@@ -293,11 +301,12 @@ void setup()
   wordclock->show();
 
   // Update Clock Settings
-  clockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
-  clockSettings[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
-  clockSettings[JSON_KEY_HSV_COLOR] = wordclock->getHSVColor();
-  clockSettings[JSON_KEY_VERSION] = GetVersion();
-  clockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
+  ClockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
+  ClockSettings[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
+  ClockSettings[JSON_KEY_HSV_COLOR] = wordclock->getHSVColor();
+  ClockSettings[JSON_KEY_VERSION] = GetVersion();
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
+  ClockSettings[JSON_KEY_WIFI_STATUS] = WiFi.RSSI();
 }
 
 /**
@@ -305,6 +314,8 @@ void setup()
  */
 void loop()
 {
+  static uint32_t old_time_100 = 0u;
+  static uint32_t old_time_1000 = 0u;
   uint32_t sys_time = millis();
 
   // check if 100ms passed
@@ -358,15 +369,15 @@ void Runnable_1000_ms()
 
   // Send data to client via web socket
   String ambBrightness = (String)lux;
-  WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
-  WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
+  WebSocketSend<String>(JSON_KEY_AMBIENT, ambBrightness);
+  WebSocketSend<String>(JSON_KEY_TIME, datetimeBuffer);
 
   // Check if adaptive brightness is enabled
-  if(clockSettings.hasPropertyEqual(JSON_KEY_ADPTV_BRIGHT, "true") == true) {
-    wordclock->updateColor(0);
+  const char *cb = ClockSettings[JSON_KEY_ADPTV_BRIGHT];
+  if (strcmp(cb, "true") == 0) {
+      wordclock->updateColor(0);
   }
   
-
   // Update Wordclock Time
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
@@ -381,69 +392,112 @@ void Runnable_1000_ms()
  */
 void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
-  String command;
-  String data;
-  
-  // Stringify payload
-  for(uint8_t i=0u; i<length; i++) {
-    // First 3 characters should contain the command
-    if(i<=2u) {
-      command += *(char*)payload++;
-    }
-    // Remaining characterst contain possilbe values
-    else {
-      data += *(char*)payload++;
-    }
-  }
-  DEBUG_MSG_LN(data);
+  StaticJsonDocument<512> json;
+  String settings;
 
-  // Check for command
-  if(command == WEBSOCKET_COMMAND_ESP_RESET) {
-    ESP.reset();
+  // Deserialize payload
+  json.clear();
+  DeserializationError err = deserializeJson(json, payload);
+  if (err) 
+  {
+#if (DEBUG_MODE == true)
+      Serial.print(F("deserializeJson() failed with code "));
+      Serial.println(err.c_str());
+      debugWebSocket("deserializeJson() failed.");
+#endif
+      return;
   }
-  else if(command == WEBSOCKET_COMMAND_WEBSOCKET_RDY) {
-    String c = String(wordclock->getHSVColor(), HEX);
-    WebSocketSend(JSON_KEY_HSV_COLOR, &c);
+#if (DEBUG_MODE == true)
+  else
+  {
+    String stringified;
+    (void)serializeJson(json, stringified);
+    Serial.println(stringified);
+    debugWebSocket("Data received: ");
+    debugWebSocket(stringified);
   }
-  else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
-    DEBUG_MSG_LN("Turn Leds off");
-    wordclock->powerOff();
+#endif
+
+  // Check for general commands
+  if (json.containsKey(JSON_KEY_COMMAND) == true) {
+    
+    // Check which command was received
+    uint8_t cmd = (uint8_t)json[JSON_KEY_COMMAND];
+    switch(cmd)
+    { 
+      case WEBSOCKET_COMMAND_ESP_RESET: {
+       ESP.reset(); 
+      } 
+      break;
+      case WEBSOCKET_COMMAND_WEBSOCKET_RDY: {
+        WebSocketSend(ClockSettings);
+      }
+      break;
+      case WEBSOCKET_COMMAND_LEDPWR_OFF: {
+        DEBUG_MSG_LN("Turn Leds off");
+        wordclock->powerOff();
+      }
+      break;
+      case WEBSOCKET_COMMAND_LEDPWR_ON: {
+        DEBUG_MSG_LN("Turn Leds on");
+        wordclock->powerOn();
+      }
+      break;
+      default: {
+        DEBUG_MSG_LN("Unknown command.");
+      }
+    }
   }
-  else if(command == WEBSOCKET_COMMAND_LEDPWR_ON) {
-    DEBUG_MSG_LN("Turn Leds on");
-    wordclock->powerOn();
+  // Check if KEY for adaptive brightness was received
+  else if(json.containsKey(JSON_KEY_ADPTV_BRIGHT)) {
+    //ClockSettings[JSON_KEY_ADPTV_BRIGHT] = (boolean)json[JSON_KEY_ADPTV_BRIGHT];
   }
-  else if(command == WEBSOCKET_COMMAND_SET_HSV) {
-    DEBUG_MSG_LN("Update HSV to: " + data);
-    wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
+  // Check if KEY for HSV color was received
+  else if(json.containsKey(JSON_KEY_HSV_COLOR)) {
+    uint16_t hue = (uint16_t)json[JSON_KEY_HSV_COLOR]["HUE"];
+    uint8_t sat = (uint8_t)json[JSON_KEY_HSV_COLOR]["SAT"];
+    uint8_t val = (uint8_t)json[JSON_KEY_HSV_COLOR]["VAL"];
+
+    // Add new values to settings container
+    ClockSettings["HUE"] = (uint16_t)map(hue, 0x0, 360, 0x0, 0xFFFF);
+    ClockSettings["SAT"] = (uint8_t)map(sat, 0x0, 100, 0x0, 0xFF);
+    ClockSettings["VAL"] = (uint8_t)map(val, 0x0, 100, 0x0, 0xFF);
+
+    // Update color
+    wordclock->updateColor(ClockSettings["HUE"], 
+                           ClockSettings["SAT"], 
+                           ClockSettings["VAL"]);
     wordclock->show();
   }
-  else if(command == WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS) {
-    clockSettings[JSON_KEY_ADPTV_BRIGHT] = data;
-  }
   else {
-    DEBUG_MSG_LN("Unknown data received...");
+    DEBUG_MSG_LN("Unknown Key."); 
   }
 }
 
 /**
  * @brief Broadcast WebSocket Data
  *
- * @param key
- * @param data
+ * @param obj JSON Object
  */
-void WebSocketSend(String key, const void* data)
+template <typename T>
+void WebSocketSend(const char *key, T value)
 {
   bool retVal;
-  JSONVar objects;
+  StaticJsonDocument<512> tempJDOC;
   String jsonString;
 
-  // Build JSON object
-  objects[key] = *(String*)data;
-  jsonString = JSON.stringify(objects);
-  DEBUG_MSG_LN("Sent JSON String: " + jsonString);
+  tempJDOC[key] = value;
+  (void)serializeJson(tempJDOC, jsonString);
+  retVal = webSocket.broadcastTXT(jsonString);
+  if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
+}
 
-  // Broadcast to all websocket clients
+void WebSocketSend(const JsonDocument &doc)
+{
+  bool retVal;
+  String jsonString;
+
+  (void)serializeJson(doc, jsonString);
   retVal = webSocket.broadcastTXT(jsonString);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
@@ -453,16 +507,12 @@ void WebSocketSend(String key, const void* data)
  *
  * @param obj JSON Object
  */
-void WebSocketSend(const JSONVar obj)
+void WebSocketSend(String s)
 {
   bool retVal;
-  String jsonString;
-
-  jsonString = JSON.stringify(obj);
-  DEBUG_MSG_LN("Sent JSON String: " + jsonString);
-
+  
   // Broadcast to all websocket clients
-  retVal = webSocket.broadcastTXT(jsonString);
+  retVal = webSocket.broadcastTXT(s);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
 
@@ -491,3 +541,10 @@ String GetVersion()
       String(SOFTWARE_VERSION_MINOR)+ "." +
       String(SOFTWARE_VERSION_PATCH));
 }
+
+#if (DEBUG_MODE)
+static inline void debugWebSocket(String msg)
+{
+  WebSocketSend<String>("DEBUG_MSG", msg);
+}
+#endif

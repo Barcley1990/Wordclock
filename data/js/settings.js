@@ -11,21 +11,23 @@ $(document).ready(function() {
 
     // Setup Button Handler
     $("#id_button_reset").on("click", function() {
-        websocketSend(COMMAND_RESET);
+        const obj = {"CMD": COMMAND_RESET};
+        websocketSend(obj);
     });
   
     // Setup Button Handler
-    led_power_state = $("#id_button_ledpwr").text;
     $("#id_button_ledpwr").click(function() {
+        let obj = null;
         if(led_power_state===false){
-            websocketSend(COMMAND_SET_LEDPWROFF);
             led_power_state = true;
             $("#id_button_ledpwr").text("LEDs On");
+            obj = {"CMD": COMMAND_SET_LEDPWRON};
         } else {
-            websocketSend(COMMAND_SET_LEDPWRON);
             led_power_state = false;
             $("#id_button_ledpwr").text("LEDs Off");
+            obj = {"CMD": COMMAND_SET_LEDPWROFF};
         }
+        websocketSend(obj);
     });
 
     // Setup Checkbox
@@ -36,7 +38,8 @@ $(document).ready(function() {
         else {
             checkbox_adapt_brighntess = false;
         }
-        websocketSend(COMMAND_SET_ADPTV_BRIGHNTESS, checkbox_adapt_brighntess);
+        const obj = {AdptvBrightness: checkbox_adapt_brighntess};
+        websocketSend(obj);
     });
 
 });

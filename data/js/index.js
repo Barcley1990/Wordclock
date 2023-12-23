@@ -32,7 +32,9 @@ $(document).ready(function() {
     dark_color_picker.on('change', (color) =>  {
         debugMessage("Color Picker Dark:",dark_color_picker.color.fromHSVa(color.h, color.s, color.v, color.a));
         $(".button").css("background-color", color.toHEX());
-        websocketSend(COMMAND_SET_HSV, color.toHEX());
+
+        const obj = {"HSV": { "HUE": Math.round(color.h), "SAT": Math.round(color.s), "VAL": Math.round(color.v) }};
+        websocketSend(obj);
     });
 });
 
