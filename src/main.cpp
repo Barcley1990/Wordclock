@@ -375,7 +375,15 @@ void Runnable_1000_ms()
   // Check if adaptive brightness is enabled
   const char *cb = ClockSettings[JSON_KEY_ADPTV_BRIGHT];
   if (strcmp(cb, "true") == 0) {
-      wordclock->updateColor(0);
+    uint8 val =  ClockSettings["VAL"];
+    const uint8_t minLux = 0;
+    const uint8_t maxLux = 100;
+
+
+    wordclock->updateColor(ClockSettings["HUE"], 
+                          ClockSettings["SAT"], 
+                          ClockSettings["VAL"]);
+    wordclock->show();
   }
   
   // Update Wordclock Time
@@ -436,11 +444,13 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
       case WEBSOCKET_COMMAND_LEDPWR_OFF: {
         DEBUG_MSG_LN("Turn Leds off");
         wordclock->powerOff();
+        ClockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
       }
       break;
       case WEBSOCKET_COMMAND_LEDPWR_ON: {
         DEBUG_MSG_LN("Turn Leds on");
         wordclock->powerOn();
+        ClockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
       }
       break;
       default: {
@@ -450,7 +460,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   }
   // Check if KEY for adaptive brightness was received
   else if(json.containsKey(JSON_KEY_ADPTV_BRIGHT)) {
-    //ClockSettings[JSON_KEY_ADPTV_BRIGHT] = (boolean)json[JSON_KEY_ADPTV_BRIGHT];
+    ClockSettings[JSON_KEY_ADPTV_BRIGHT] = (boolean)json[JSON_KEY_ADPTV_BRIGHT];
   }
   // Check if KEY for HSV color was received
   else if(json.containsKey(JSON_KEY_HSV_COLOR)) {
