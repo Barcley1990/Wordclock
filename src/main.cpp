@@ -379,6 +379,7 @@ void Runnable_1000_ms()
     const uint8_t minLux = 0;
     const uint8_t maxLux = 100;
 
+    
 
     wordclock->updateColor(ClockSettings["HUE"], 
                           ClockSettings["SAT"], 
