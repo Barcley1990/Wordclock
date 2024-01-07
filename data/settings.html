@@ -28,14 +28,20 @@
                 <button class="button" type="button" id="id_button_ledpwr">LEDs Off</button>
             </div>
             <br>
-            <div>
+            <div class="settings-adapt-bright">
+                <label for="adaptive_brightness"> Adaptive Brightness:</label>
                 <input type="checkbox" id="setting_adapt_brightness" name="adaptive_brightness" value=1>
-                <label for="adaptive_brightness"> Adaptive Brightness</label><br>
-                <div class="settings_adaptive_brightness"> 
-                    <input type="number" id="settings_adapt_brightness_val0" name="val0">
-                    <label for="val0"> Val0 </label>
-                    <input type="number" id="settings_adapt_brightness_val1" name="val1">
-                    <label for="val1"> Val1 </label>
+                
+                <div class="settings-adpt-slope"> 
+                    <label for="slope"> Slope: </label>
+                    <input type="number" id="settings-slope" name="slope" value="1" min="0" max="10">
+                </div>
+                <div class="settings-adpt-offset"> 
+                    <label for="offset"> Offset: </label>
+                    <input type="number" id="settings-offset" name="offset" value="0" min="0" max="100">
+                </div>
+                <div > 
+                    <button class="settings-btn-save" id="settings-save-btn" disabled> Save </button> 
                 </div>
             </div>
         </div>

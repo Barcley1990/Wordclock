@@ -50,7 +50,7 @@
 static bool WiFi_Setup_Successful = false;
 
 const char* mdns_name = "Wordclock";
-const char* ssid      = "TARDIS"; 
+const char* ssid      = "TARDIS";
 const char* password  = "82uqFnUSjUn7YL";
 
 const uint8_t WEBSOCKET_COMMAND_SET_HSV = 95;
@@ -69,6 +69,9 @@ const char* JSON_KEY_LED_PWR_STATE    = "PwrState";
 const char* JSON_KEY_BRIGHTNESS       = "Brightness";
 const char* JSON_KEY_HSV_COLOR        = "HSV";
 const char* JSON_KEY_ADPTV_BRIGHT     = "AdptvBrightness";
+const char* JSON_KEY_ADPTV_BRIGHT_A   = "AdptvBrightnessA";
+const char* JSON_KEY_ADPTV_BRIGHT_B   = "AdptvBrightnessB";
+
 
 /***********************************************************************************************************************
  * Local function declarations and objects
@@ -77,7 +80,7 @@ void Runnable_100_ms();
 void Runnable_1000_ms();
 void WebSocketReceive(uint8_t* payload, uint8_t length);
 //void WebSocketSend(String key, const void* data);
-template <typename T> 
+template <typename T>
 void WebSocketSend(const char *key, T value);
 void WebSocketSend(const JsonDocument &doc);
 void WebSocketSend(String s);
@@ -102,7 +105,7 @@ StaticJsonDocument<size> ClockSettings;
 StaticJsonDocument<512> DebugMsg;
 static inline void debugWebSocket(String msg);
 #endif
-  
+
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
@@ -177,24 +180,24 @@ void setup()
   }
 
   // Connect to the network
-  WiFi.begin(ssid, password);             
+  WiFi.begin(ssid, password);
   DEBUG_MSG("Connecting to ");
   DEBUG_MSG(ssid); DEBUG_MSG_LN(" ...");
 
 #if DEBUG_MODE
   int i = 0;
   // Wait for the Wi-Fi to connect
-  while (WiFi.status() != WL_CONNECTED) { 
+  while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     DEBUG_MSG(++i); DEBUG_MSG(' ');
   }
-#endif 
+#endif
 
   // Send the IP address of the ESP8266 to the computer
   DEBUG_MSG_LN('\n');
-  DEBUG_MSG_LN("Connection established!");  
+  DEBUG_MSG_LN("Connection established!");
   DEBUG_MSG("IP address:\t");
-  DEBUG_MSG_LN(WiFi.localIP());         
+  DEBUG_MSG_LN(WiFi.localIP());
 
   {
     // Successful connected to local wifi...
@@ -306,6 +309,8 @@ void setup()
   ClockSettings[JSON_KEY_HSV_COLOR] = wordclock->getHSVColor();
   ClockSettings[JSON_KEY_VERSION] = GetVersion();
   ClockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT_A] = 1u;
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT_B] = 0u;
   ClockSettings[JSON_KEY_WIFI_STATUS] = WiFi.RSSI();
 }
 
@@ -375,18 +380,21 @@ void Runnable_1000_ms()
   // Check if adaptive brightness is enabled
   const char *cb = ClockSettings[JSON_KEY_ADPTV_BRIGHT];
   if (strcmp(cb, "true") == 0) {
-    uint8 val =  ClockSettings["VAL"];
-    const uint8_t minLux = 0;
-    const uint8_t maxLux = 100;
+    uint8 val;
 
-    
+    const float a = ClockSettings[JSON_KEY_ADPTV_BRIGHT_A];
+    const uint8_t b = ClockSettings[JSON_KEY_ADPTV_BRIGHT_B];
 
-    wordclock->updateColor(ClockSettings["HUE"], 
-                          ClockSettings["SAT"], 
-                          ClockSettings["VAL"]);
+    // Calculate new value
+    val = (uint8_t)(lux * a) + b;
+
+    ClockSettings["VAL"] = val;
+    wordclock->updateColor(ClockSettings["HUE"],
+                           ClockSettings["SAT"],
+                           ClockSettings["VAL"]);
     wordclock->show();
   }
-  
+
   // Update Wordclock Time
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
@@ -407,7 +415,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   // Deserialize payload
   json.clear();
   DeserializationError err = deserializeJson(json, payload);
-  if (err) 
+  if (err)
   {
 #if (DEBUG_MODE == true)
       Serial.print(F("deserializeJson() failed with code "));
@@ -429,14 +437,14 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
 
   // Check for general commands
   if (json.containsKey(JSON_KEY_COMMAND) == true) {
-    
+
     // Check which command was received
     uint8_t cmd = (uint8_t)json[JSON_KEY_COMMAND];
     switch(cmd)
-    { 
+    {
       case WEBSOCKET_COMMAND_ESP_RESET: {
-       ESP.reset(); 
-      } 
+       ESP.reset();
+      }
       break;
       case WEBSOCKET_COMMAND_WEBSOCKET_RDY: {
         WebSocketSend(ClockSettings);
@@ -463,6 +471,12 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
   else if(json.containsKey(JSON_KEY_ADPTV_BRIGHT)) {
     ClockSettings[JSON_KEY_ADPTV_BRIGHT] = (boolean)json[JSON_KEY_ADPTV_BRIGHT];
   }
+  else if(json.containsKey(JSON_KEY_ADPTV_BRIGHT_A)) {
+    ClockSettings[JSON_KEY_ADPTV_BRIGHT_A] = (float)json[JSON_KEY_ADPTV_BRIGHT_A];
+  }
+  else if(json.containsKey(JSON_KEY_ADPTV_BRIGHT_B)) {
+    ClockSettings[JSON_KEY_ADPTV_BRIGHT_B] = (uint8_t)json[JSON_KEY_ADPTV_BRIGHT_B];
+  }
   // Check if KEY for HSV color was received
   else if(json.containsKey(JSON_KEY_HSV_COLOR)) {
     uint16_t hue = (uint16_t)json[JSON_KEY_HSV_COLOR]["HUE"];
@@ -475,13 +489,13 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
     ClockSettings["VAL"] = (uint8_t)map(val, 0x0, 100, 0x0, 0xFF);
 
     // Update color
-    wordclock->updateColor(ClockSettings["HUE"], 
-                           ClockSettings["SAT"], 
+    wordclock->updateColor(ClockSettings["HUE"],
+                           ClockSettings["SAT"],
                            ClockSettings["VAL"]);
     wordclock->show();
   }
   else {
-    DEBUG_MSG_LN("Unknown Key."); 
+    DEBUG_MSG_LN("Unknown Key.");
   }
 }
 
@@ -521,7 +535,7 @@ void WebSocketSend(const JsonDocument &doc)
 void WebSocketSend(String s)
 {
   bool retVal;
-  
+
   // Broadcast to all websocket clients
   retVal = webSocket.broadcastTXT(s);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");

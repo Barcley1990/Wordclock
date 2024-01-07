@@ -176,7 +176,7 @@ label {
 }
 
 .button {
-  background-color: #704caf; /* Green */
+  background-color: #704caf;
   border: none;
   color: white;
   text-align: center;
@@ -281,6 +281,20 @@ input[type="radio"]:checked + label span {
   transition: background-color 0.24s linear; 
 }
 
-.settings_adaptive_brightness {
-  display: none;
+label {
+  display: block;
+  width: 200px;
+}
+input {
+  width: 100px;
+}
+.settings-adapt-bright {
+  margin-top: 10px;
+  width: 250px;
+}
+
+.settings-btn-save {
+  margin-top: 10px;
+  width: 100%;
+  height: 20px;
 }

@@ -17,6 +17,13 @@ const JSON_KEY_VERSION = "Version";
 const JSON_KEY_LED_PWR_STATE = "PwrState";
 const JSON_KEY_HSV = "HSV";
 
+let ClockSettings = {
+    JSON_KEY_VERSION: "0.0.0",
+    JSON_KEY_LED_PWR_STATE: 0,
+    "AdptvBrightness": true,
+    "AdptvBrightnessA": 1.0,
+    "AdptvBrightnessB": 0
+};
 
 /**
  * initWebsocket
@@ -53,19 +60,27 @@ function initWebsocket() {
 
         if(obj.hasOwnProperty(JSON_KEY_VERSION)) {
             $("#id_version").text(obj.Version);
+            ClockSettings.Version = obj.Version;
         }
 
         if(obj.hasOwnProperty(JSON_KEY_AMBIENT)) {
             $("#id_ambient").text(obj.Light);
         }
 
+        if(obj.hasOwnProperty("AdptvBrightness")) {
+            ClockSettings.AdptvBrightness = obj.AdptvBrightness;
+        }
+
+        if(obj.hasOwnProperty("AdptvBrightnessA")) {
+            ClockSettings.AdptvBrightnessA = obj.AdptvBrightnessA;
+        }
+
+        if(obj.hasOwnProperty("AdptvBrightnessB")) {
+            ClockSettings.AdptvBrightnessB = obj.AdptvBrightnessB;
+        }
+
         if(obj.hasOwnProperty(JSON_KEY_LED_PWR_STATE)) {
-            state = obj.PwrState;
-            if(state===true) {
-                $("#id_button_ledpwr").text("LEDs Off");
-            } else {
-                $("#id_button_ledpwr").text("LEDs On");
-            }
+            ClockSettings.JSON_KEY_LED_PWR_STATE = obj.PwrState;
         }
 
         if(obj.hasOwnProperty(JSON_KEY_TIME)) {
