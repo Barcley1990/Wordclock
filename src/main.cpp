@@ -34,6 +34,9 @@
 #include <NTPClient.h>
 #include <WiFiUdp.h>
 
+/***********************************************************************************************************************
+ * Global Macros
+ ***********************************************************************************************************************/
 #define WORDCLOCK_BRIGHNESS_LIMIT (127u)
 #define WORDCLOCK_USE_WIFI        (true)
 #define WORDCLOCK_WIFI_TIMEOUT    (20u)
@@ -49,17 +52,16 @@
  ***********************************************************************************************************************/
 static bool WiFi_Setup_Successful = false;
 
-const char* mdns_name = "Wordclock";
-const char* ssid      = "TARDIS";
-const char* password  = "82uqFnUSjUn7YL";
+const uint8_t WEBSOCKET_COMMAND_SET_HSV           = 95;
+const uint8_t WEBSOCKET_COMMAND_LEDPWR_OFF        = 96;
+const uint8_t WEBSOCKET_COMMAND_LEDPWR_ON         = 97;
+const uint8_t WEBSOCKET_COMMAND_ESP_RESET         = 20;
+const uint8_t WEBSOCKET_COMMAND_WEBSOCKET_RDY     = 21;
+const uint8_t WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS  = 98;
 
-const uint8_t WEBSOCKET_COMMAND_SET_HSV = 95;
-const uint8_t WEBSOCKET_COMMAND_LEDPWR_OFF = 96;
-const uint8_t WEBSOCKET_COMMAND_LEDPWR_ON = 97;
-const uint8_t WEBSOCKET_COMMAND_ESP_RESET = 20;
-const uint8_t WEBSOCKET_COMMAND_WEBSOCKET_RDY = 21;
-const uint8_t WEBSOCKET_COMMAND_ADPTV_BRIGHNTESS = 98;
-
+const char* mdns_name                 = "Wordclock";
+const char* ssid                      = "TARDIS";
+const char* password                  = "82uqFnUSjUn7YL";
 const char* JSON_KEY_COMMAND          = "CMD";
 const char* JSON_KEY_AMBIENT          = "Light";
 const char* JSON_KEY_TIME             = "Time";
@@ -74,36 +76,35 @@ const char* JSON_KEY_ADPTV_BRIGHT_B   = "AdptvBrightnessB";
 
 
 /***********************************************************************************************************************
- * Local function declarations and objects
+ * Local function declarations
  ***********************************************************************************************************************/
-void Runnable_100_ms();
-void Runnable_1000_ms();
+void Runnable_100_ms(void);
+void Runnable_1000_ms(void);
 void WebSocketReceive(uint8_t* payload, uint8_t length);
-//void WebSocketSend(String key, const void* data);
 template <typename T>
 void WebSocketSend(const char *key, T value);
 void WebSocketSend(const JsonDocument &doc);
 void WebSocketSend(String s);
-void BootPinCbk();
-String GetVersion();
+void BootPinCbk(void);
+String GetVersion(void);
+#if (DEBUG_MODE)
+static inline void debugWebSocket(String msg);
+#endif
 
-IPAddress local_IP(192, 168, 178, 90);
-IPAddress gateway(192, 168, 178, 1);
-IPAddress subnet(255, 255, 255, 255);
-ESP8266WebServer HtmlServer(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
+/***********************************************************************************************************************
+ * Global objects
+ ***********************************************************************************************************************/
+ESP8266WebServer        HtmlServer(80);
+WebSocketsServer        WebSocket = WebSocketsServer(81);
 ESP8266HTTPUpdateServer OTAServer;
-ILayout* layout;
-Wordclock* wordclock;
-Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
-// Define NTP Client to get time
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
-const size_t size = 512;
-StaticJsonDocument<size> ClockSettings;
+ILayout*                Layout;
+Wordclock*              wordclock;
+Debounce                bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
+WiFiUDP                 ntpUDP;
+NTPClient               timeClient(ntpUDP, "pool.ntp.org");
+StaticJsonDocument<512> ClockSettings;
 #if (DEBUG_MODE)
 StaticJsonDocument<512> DebugMsg;
-static inline void debugWebSocket(String msg);
 #endif
 
 /***********************************************************************************************************************
@@ -116,59 +117,57 @@ void setup()
 {
   // Initialize GPIOs
   pinMode(MCAL_WIFI_EN_PIN, INPUT);
-  pinMode(MCAL_BOOT_PIN, INPUT);
-  pinMode(MCAL_LED_EN_PIN, OUTPUT);
-  pinMode(MCAL_DAT_PIN,OUTPUT);
-  pinMode(MCAL_CLK_PIN,OUTPUT);
-  pinMode(MCAL_RST_PIN,OUTPUT);
+  pinMode(MCAL_BOOT_PIN,    INPUT);
+  pinMode(MCAL_LED_EN_PIN,  OUTPUT);
+  pinMode(MCAL_DAT_PIN,     OUTPUT);
+  pinMode(MCAL_CLK_PIN,     OUTPUT);
+  pinMode(MCAL_RST_PIN,     OUTPUT);
+
+  // Disable LED Power
   digitalWrite(MCAL_LED_EN_PIN, LOW);
 
   // Start serial inteface
+#if(DEBUG_MODE)
   Serial.begin(115200);
   delay(100);
+#endif
 
   // Print software version
-  DEBUG_MSG_LN("");
-  DEBUG_MSG_LN("");
-  DEBUG_MSG_LN(header);
-  DEBUG_MSG_LN("");
-  DEBUG_MSG_LN("");
-  DEBUG_MSG_LN("--------------------------------------");
-  DEBUG_MSG("\nVersion: ");
-  DEBUG_MSG_LN(GetVersion());
+#if(DEBUG_MODE)
+  Serial.println("");
+  Serial.println("");
+  Serial.println(header);
+  Serial.println("");
+  Serial.println("");
+  Serial.println("--------------------------------------");
+  Serial.print("\nVersion: ");
+  Serial.println(GetVersion());
   Serial.printf("Chip ID         : %08X\n", ESP.getChipId());
   Serial.printf("Flash ID        : %08X\n\n", ESP.getFlashChipId());
   Serial.printf("CPU Speed       : %u MHz \n\n", ESP.getCpuFreqMHz());
-
-  Serial.printf("Flash real Size : %u KByte\n",
-                ESP.getFlashChipRealSize() / 1024);
-  Serial.printf("Flash ide  Size : %u KByte\n",
-                ESP.getFlashChipSize() / 1024);
+  Serial.printf("Flash real Size : %u KByte\n", ESP.getFlashChipRealSize() / 1024);
+  Serial.printf("Flash ide  Size : %u KByte\n", ESP.getFlashChipSize() / 1024);
   Serial.printf("Flash ide Speed : %u\n\n", ESP.getFlashChipSpeed());
-
   Serial.printf("Free Heap Size  : %u Byte\n", ESP.getFreeHeap());
   Serial.printf("Sketch Size     : %u Byte \n", ESP.getSketchSize());
   Serial.printf("Free Sketch Size: %u Byte \n\n", ESP.getFreeSketchSpace());
-
   Serial.printf("SDK Version     : %s\n", ESP.getSdkVersion());
-  DEBUG_MSG("RESET Info      : ");
-  DEBUG_MSG_LN(ESP.getResetInfo());
-  DEBUG_MSG("COMPILED        : ");
-  DEBUG_MSG(__DATE__);
-  DEBUG_MSG(" ");
-  DEBUG_MSG_LN(__TIME__);
-
-  DEBUG_MSG_LN("--------------------------------------");
-  DEBUG_MSG_LN("Ende Setup");
-  DEBUG_MSG_LN("--------------------------------------");
-  DEBUG_MSG_LN("");
+  Serial.print("RESET Info      : ");
+  Serial.println(ESP.getResetInfo());
+  Serial.print("COMPILED        : ");
+  Serial.print(__DATE__);
+  Serial.print(" ");
+  Serial.println(__TIME__);
+  Serial.println("--------------------------------------");
+  Serial.println("Ende Setup");
+  Serial.println("--------------------------------------");
+  Serial.println("");
   delay(100);
-
+#endif
 
 #if (WORDCLOCK_USE_WIFI == true)
-  // Initialize LittleFS
+  // Initialize File System
   DEBUG_MSG("Try to initialize LittleFS... ");
-  //LittleFS.format();
   if (!LittleFS.begin())
   {
     DEBUG_MSG_LN("-> An error has occurred while mounting LittleFS. End Setup!\n");
@@ -179,7 +178,7 @@ void setup()
     DEBUG_MSG_LN("-> LittleFS mounted successfully\n");
   }
 
-  // Connect to the network
+  // Connect to wifi
   WiFi.begin(ssid, password);
   DEBUG_MSG("Connecting to ");
   DEBUG_MSG(ssid); DEBUG_MSG_LN(" ...");
@@ -199,86 +198,82 @@ void setup()
   DEBUG_MSG("IP address:\t");
   DEBUG_MSG_LN(WiFi.localIP());
 
-  {
-    // Successful connected to local wifi...
-    DEBUG_MSG("Successfully connected! IP is: ");
-    DEBUG_MSG_LN(WiFi.localIP());
+  // Successful connected to local wifi...
+  DEBUG_MSG("Successfully connected! IP is: ");
+  DEBUG_MSG_LN(WiFi.localIP());
 
-    // Configure html server
-    HtmlServer.onNotFound([](){
-        String message = "File Not Found\n\n";
-        message += "URI: ";
-        message += HtmlServer.uri();
-        message += "\nMethod: ";
-        message += (HtmlServer.method() == HTTP_GET) ? "GET" : "POST";
-        message += "\nArguments: ";
-        message += HtmlServer.args();
-        message += "\n";
-        for (uint8_t i = 0; i < HtmlServer.args(); i++) {
-          message += " " + HtmlServer.argName(i) + ": " + HtmlServer.arg(i) + "\n";
-        }
-        HtmlServer.send(404, "text/plain", message);
-    });
-    HtmlServer.serveStatic("/", LittleFS, "/index.html");
-    HtmlServer.serveStatic("/index", LittleFS, "/index.html");
-    HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-    HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
-    HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
-    HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
-    HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
-    HtmlServer.serveStatic("/js/settings.js", LittleFS, "/js/settings.js");
-    HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
-    HtmlServer.serveStatic("/js/websocket.js", LittleFS, "/js/websocket.js");
-    HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
-    HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
-
-
-    // Configure WebSocket Server
-    webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
-      String version = GetVersion();
-      String settings;
-      switch (type)
-      {
-      case WStype_DISCONNECTED:
-        DEBUG_MSG_LN("Client Disconnected");
-        break;
-      case WStype_CONNECTED:
-        DEBUG_MSG_LN("Client Connected");
-        debugWebSocket("Websocket Connected!");
-        break;
-      case WStype_TEXT:
-        DEBUG_MSG("Data Received: ");
-        WebSocketReceive(payload, length);
-        break;
-        //-Do Nothing-
-      case WStype_BIN:
-      case WStype_ERROR:
-      case WStype_FRAGMENT_TEXT_START:
-      case WStype_FRAGMENT_BIN_START:
-      case WStype_FRAGMENT:
-      case WStype_FRAGMENT_FIN:
-      default:
-        break;
+  // Configure html server
+  HtmlServer.onNotFound([](){
+      String message = "File Not Found\n\n";
+      message += "URI: ";
+      message += HtmlServer.uri();
+      message += "\nMethod: ";
+      message += (HtmlServer.method() == HTTP_GET) ? "GET" : "POST";
+      message += "\nArguments: ";
+      message += HtmlServer.args();
+      message += "\n";
+      for (uint8_t i = 0; i < HtmlServer.args(); i++) {
+        message += " " + HtmlServer.argName(i) + ": " + HtmlServer.arg(i) + "\n";
       }
-    });
+      HtmlServer.send(404, "text/plain", message);
+  });
+  HtmlServer.serveStatic("/", LittleFS, "/index.html");
+  HtmlServer.serveStatic("/index", LittleFS, "/index.html");
+  HtmlServer.serveStatic("/update", LittleFS, "/update.html");
+  HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
+  HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
+  HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
+  HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
+  HtmlServer.serveStatic("/js/settings.js", LittleFS, "/js/settings.js");
+  HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
+  HtmlServer.serveStatic("/js/websocket.js", LittleFS, "/js/websocket.js");
+  HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
+  HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
 
-    // Initialize servers (HTML, WS, OTA, mDNS)
-    OTAServer.setup(&HtmlServer);
-    HtmlServer.begin();
-    webSocket.begin();
-    if (MDNS.begin(mdns_name)) {
-      DEBUG_MSG("DNS started: ");
-      DEBUG_MSG_LN("http://" + String(mdns_name) + ".local/");
+
+  // Configure WebSocket Server
+  WebSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
+    String version = GetVersion();
+    String settings;
+    switch (type)
+    {
+    case WStype_DISCONNECTED:
+      DEBUG_MSG_LN("Client Disconnected");
+      break;
+    case WStype_CONNECTED:
+      DEBUG_MSG_LN("Client Connected");
+      debugWebSocket("Websocket Connected!");
+      break;
+    case WStype_TEXT:
+      DEBUG_MSG("Data Received: ");
+      WebSocketReceive(payload, length);
+      break;
+      //-Do Nothing-
+    case WStype_BIN:
+    case WStype_ERROR:
+    case WStype_FRAGMENT_TEXT_START:
+    case WStype_FRAGMENT_BIN_START:
+    case WStype_FRAGMENT:
+    case WStype_FRAGMENT_FIN:
+    default:
+      break;
     }
-    MDNS.addService("http", "tcp", 80);
+  });
 
-    DEBUG_MSG("HTTP server started on port 80: ");
-    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
-    WiFi_Setup_Successful = true;
+  // Initialize servers (HTML, WS, OTA, mDNS)
+  OTAServer.setup(&HtmlServer);
+  HtmlServer.begin();
+  WebSocket.begin();
+  if (MDNS.begin(mdns_name)) {
+    DEBUG_MSG("DNS started: ");
+    DEBUG_MSG_LN("http://" + String(mdns_name) + ".local/");
   }
-#endif
+  MDNS.addService("http", "tcp", 80);
 
-#if (WORDCLOCK_USE_WIFI == true)
+  DEBUG_MSG("HTTP server started on port 80: ");
+  Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
+  WiFi_Setup_Successful = true;
+
   // Initialize a NTPClient to get actual time
   timeClient.begin();
   timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
@@ -290,11 +285,12 @@ void setup()
 #endif
 
   // Initialize led strip
-  layout = new Layout_De_11x10();
-  wordclock = new Wordclock(layout);
+  Layout = new Layout_De_11x10();
+  wordclock = new Wordclock(Layout);
 
   // Update RTC with server time
   wordclock->setRTCDateTime(dt);
+
   // Switch LED power on
   wordclock->powerOn();
   delay(100);
@@ -304,14 +300,14 @@ void setup()
   wordclock->show();
 
   // Update Clock Settings
-  ClockSettings[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
-  ClockSettings[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
-  ClockSettings[JSON_KEY_HSV_COLOR] = wordclock->getHSVColor();
-  ClockSettings[JSON_KEY_VERSION] = GetVersion();
-  ClockSettings[JSON_KEY_ADPTV_BRIGHT] = "false";
-  ClockSettings[JSON_KEY_ADPTV_BRIGHT_A] = 1u;
-  ClockSettings[JSON_KEY_ADPTV_BRIGHT_B] = 0u;
-  ClockSettings[JSON_KEY_WIFI_STATUS] = WiFi.RSSI();
+  ClockSettings[JSON_KEY_LED_PWR_STATE]   = wordclock->getPowerState();
+  ClockSettings[JSON_KEY_BRIGHTNESS]      = wordclock->getBrightness();
+  ClockSettings[JSON_KEY_HSV_COLOR]       = wordclock->getHSVColor();
+  ClockSettings[JSON_KEY_VERSION]         = GetVersion();
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT]    = "false";
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT_A]  = 1u;
+  ClockSettings[JSON_KEY_ADPTV_BRIGHT_B]  = 0u;
+  ClockSettings[JSON_KEY_WIFI_STATUS]     = WiFi.RSSI();
 }
 
 /**
@@ -340,7 +336,7 @@ void loop()
   if(WiFi_Setup_Successful == true)
   {
     HtmlServer.handleClient();
-    webSocket.loop();
+    WebSocket.loop();
     MDNS.update();
   }
 #endif
@@ -513,7 +509,7 @@ void WebSocketSend(const char *key, T value)
 
   tempJDOC[key] = value;
   (void)serializeJson(tempJDOC, jsonString);
-  retVal = webSocket.broadcastTXT(jsonString);
+  retVal = WebSocket.broadcastTXT(jsonString);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
 
@@ -523,7 +519,7 @@ void WebSocketSend(const JsonDocument &doc)
   String jsonString;
 
   (void)serializeJson(doc, jsonString);
-  retVal = webSocket.broadcastTXT(jsonString);
+  retVal = WebSocket.broadcastTXT(jsonString);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
 
@@ -537,7 +533,7 @@ void WebSocketSend(String s)
   bool retVal;
 
   // Broadcast to all websocket clients
-  retVal = webSocket.broadcastTXT(s);
+  retVal = WebSocket.broadcastTXT(s);
   if(retVal == false) DEBUG_MSG_LN("Websocket broadcast failed!");
 }
 

@@ -1,12 +1,12 @@
 /**
  * @file wordclock.h
  * @author your name (you@domain.com)
- * @brief 
+ * @brief
  * @version 0.1
  * @date 2023-04-29
- * 
+ *
  * @copyright Copyright (c) 2023
- * 
+ *
  */
 
 #ifndef _WORDCLOCK_H
@@ -18,10 +18,10 @@ Z E H N Z W A N Z I G    ==> ZEHN ZWANZIG       21<------------11
 D R E I V I E R T E L    ==> DREI|VIERTEL       22------------>32
 T G N A C H V O R J M    ==> NACH VOR           43<------------33
 H A L B Q Z W Ö L F P    ==> HALB ZWÖLF         44------------>54
-Z W E I N S I E B E N    ==> ZW|EI|N|S|IEBEN    65<------------55   
+Z W E I N S I E B E N    ==> ZW|EI|N|S|IEBEN    65<------------55
 K D R E I R H F Ü N F    ==> DREI FÜNF          66------------>76
 E L F N E U N V I E R    ==> ELF NEUN VIER      87<------------77
-W A C H T Z E H N R S    ==> ACHT ZEHN          88------------>98 
+W A C H T Z E H N R S    ==> ACHT ZEHN          88------------>98
 B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 **************************************************************/
 
@@ -31,7 +31,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #include <Adafruit_NeoPixel.h>
 #include <BH1750.h>
 #include <Wire.h>
-#include <ThreeWire.h>  
+#include <ThreeWire.h>
 #include <RtcDS1302.h>
 #include <Arduino.h>
 
@@ -42,7 +42,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
 #define MATRIX_ROTATION         (2u) //0=0° 1=90° 2=180° 3=270°
-// Set 'kMatrixSerpentineLayout' to false if your pixels are 
+// Set 'kMatrixSerpentineLayout' to false if your pixels are
 // laid out all running the same way, like this:
 //
 //     0 >  1 >  2 >  3 >  4
@@ -59,7 +59,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 //     |
 //    15 > 16 > 17 > 18 > 19
 //
-// Set 'kMatrixSerpentineLayout' to true if your pixels are 
+// Set 'kMatrixSerpentineLayout' to true if your pixels are
 // laid out back-and-forth, like this:
 //
 //     0 >  1 >  2 >  3 >  4
@@ -114,10 +114,10 @@ private:
     ThreeWire* _myWire = nullptr;
     RtcDS1302<ThreeWire>* _rtc = nullptr;
     ILayout* _layout = nullptr;
-    
+
     void printDateTime(const RtcDateTime& dt);
     void checkRTCTime();
-    
+
 public:
     Wordclock(ILayout* layout);
     ~Wordclock();
@@ -149,14 +149,14 @@ public:
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
     void updateColor(uint32_t color);
     void updateColor(uint16_t h, uint8_t s, uint8_t v);
-    
+
     // RTC Functions
     void setRTCDateTime(RtcDateTime dt);
     RtcDateTime getRTCDateTime();
 
     // NTP
     void getNTPDateTime();
-    
+
     // LDR Functions
     float getAmbBrightness();
 };
