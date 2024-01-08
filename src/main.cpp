@@ -218,9 +218,9 @@ void setup()
       HtmlServer.send(404, "text/plain", message);
   });
   HtmlServer.serveStatic("/", LittleFS, "/index.html");
-  HtmlServer.serveStatic("/index", LittleFS, "/index.html");
-  HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-  HtmlServer.serveStatic("/settings", LittleFS, "/settings.html");
+  HtmlServer.serveStatic("/index.html", LittleFS, "/index.html");
+  HtmlServer.serveStatic("/update.html", LittleFS, "/update.html");
+  HtmlServer.serveStatic("/settings.html", LittleFS, "/settings.html");
   HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
   HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
   HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");

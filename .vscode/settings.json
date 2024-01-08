@@ -29,5 +29,7 @@
         "future": "cpp",
         "optional": "cpp",
         "utility": "cpp"
-    }
+    },
+    "liveServer.settings.AdvanceCustomBrowserCmdLine": "",
+    "liveServer.settings.root": "/data"
 }

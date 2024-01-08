@@ -15,12 +15,12 @@
 
 <div class="container">
 	<header>
-		<span class="headline" >Wordclock</span> 
+		<span class="headline" >Wordclock</span>
 	</header>
-		
+
     <article>
         <div class="settings" style="margin: 20px;">
-        
+
             <div>
                 <button class="button" type="button" id="id_button_reset">ESP Reset</button>
             </div>
@@ -31,17 +31,17 @@
             <div class="settings-adapt-bright">
                 <label for="adaptive_brightness"> Adaptive Brightness:</label>
                 <input type="checkbox" id="setting_adapt_brightness" name="adaptive_brightness" value=1>
-                
-                <div class="settings-adpt-slope"> 
+
+                <div class="settings-adpt-slope">
                     <label for="slope"> Slope: </label>
                     <input type="number" id="settings-slope" name="slope" value="1" min="0" max="10">
                 </div>
-                <div class="settings-adpt-offset"> 
+                <div class="settings-adpt-offset">
                     <label for="offset"> Offset: </label>
                     <input type="number" id="settings-offset" name="offset" value="0" min="0" max="100">
                 </div>
-                <div > 
-                    <button class="settings-btn-save" id="settings-save-btn" disabled> Save </button> 
+                <div >
+                    <button class="settings-btn-save" id="settings-save-btn" disabled> Save </button>
                 </div>
             </div>
         </div>
@@ -49,13 +49,13 @@
             <textarea id="console" cols="40" rows="5" readonly="true"></textarea>
         </div>
 	</article>
-    
+
 	<aside>
 		<div class="sidebar">
 			<ul>
-             <li><a href="/index"><i class="fas fa-home"></i><span class="item-label">Home</span></a></li>
-			 <li><a href="/settings"><i class="fas fa-cog"></i><span class="item-label">Settings</span></a></li>
-			 <li><a href="/update"><i class="fas fa-upload"></i><span class="item-label">Update</span></a></li>
+             <li><a href="/index.html"><i class="fas fa-home"></i><span class="item-label">Home</span></a></li>
+			 <li><a href="/setting.html"><i class="fas fa-cog"></i><span class="item-label">Settings</span></a></li>
+			 <li><a href="/update.html"><i class="fas fa-upload"></i><span class="item-label">Update</span></a></li>
 			</ul>
 			<a class="version" id="id_version">version</a>
 		</div>
@@ -71,8 +71,8 @@
 <script type="text/javascript" src="/js/websocket.js"></script>
 <script type="text/javascript" src="/js/settings.js"></script>
 
-	
-	
+
+
 </body>
 </html>
 
