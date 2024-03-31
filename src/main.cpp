@@ -32,6 +32,7 @@
 #include <ArduinoJson.h>
 #include <RtcDateTime.h>
 #include <NTPClient.h>
+#include <Timezone.h>
 #include <WiFiUdp.h>
 
 /***********************************************************************************************************************
@@ -102,6 +103,9 @@ Wordclock*              wordclock;
 Debounce                bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 WiFiUDP                 ntpUDP;
 NTPClient               timeClient(ntpUDP, "pool.ntp.org");
+TimeChangeRule          CEST = {"CEST", Last, Sun, Mar, 2, 120};     // Central European Summer Time
+TimeChangeRule          CET = {"CET ", Last, Sun, Oct, 3, 60};       // Central European Standard Time
+Timezone                CE(CEST, CET);
 StaticJsonDocument<512> ClockSettings;
 #if (DEBUG_MODE)
 StaticJsonDocument<512> DebugMsg;
@@ -278,10 +282,12 @@ void setup()
   timeClient.begin();
   timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
   timeClient.update();
+  setTime(timeClient.getEpochTime());
+  timeClient.end();
 
   // Update RTC with server time
   RtcDateTime dt;
-  dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
+  dt.InitWithUnix32Time((uint32_t)(CE.toLocal(now())));
 #endif
 
   // Initialize led strip
