@@ -280,7 +280,6 @@ void setup()
 
   // Initialize a NTPClient to get actual time
   timeClient.begin();
-  timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
   timeClient.update();
   setTime(timeClient.getEpochTime());
   timeClient.end();
