@@ -41,12 +41,6 @@
 #define WORDCLOCK_BRIGHNESS_LIMIT (127u)
 #define WORDCLOCK_USE_WIFI        (true)
 #define WORDCLOCK_WIFI_TIMEOUT    (20u)
-// Set offset time in seconds to adjust for your timezone, for example:
-  // GMT +1 = 3600
-  // GMT +8 = 28800
-  // GMT -1 = -3600
-  // GMT 0 = 0
-#define WORDCLOCK_TIME_OFFSET     (3600u)
 
 /***********************************************************************************************************************
  * Private Variables
@@ -280,7 +274,6 @@ void setup()
 
   // Initialize a NTPClient to get actual time
   timeClient.begin();
-  timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
   timeClient.update();
   setTime(timeClient.getEpochTime());
   timeClient.end();
