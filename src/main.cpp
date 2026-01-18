@@ -20,6 +20,7 @@
 #include "debounce.h"
 #include "layouts/ilayout.h"
 #include "layouts/layout_de_11x10.h"
+#include "logger.h"
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
@@ -52,7 +53,7 @@ static uint32_t old_time_100 = 0u;
 static uint32_t old_time_1000 = 0u;
 
 const char* mdns_name = "Wordclock";
-const char* ssid      = "TARDIS"; 
+const char* ssid      = "TARDIS";
 const char* password  = "82uqFnUSjUn7YL";
 
 const char* WEBSOCKET_COMMAND_SET_HSV = "095";
@@ -90,6 +91,7 @@ Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org");
+Logger logger;
 
 /***********************************************************************************************************************
  * Function definitions
@@ -111,6 +113,10 @@ void setup()
   // Start serial inteface
   Serial.begin(115200);
   delay(100);
+
+  logger.begin();              // Telnet starten
+  logger.setLevel(LOG_DEBUG);  // Loglevel setzen
+  logger.info("Wordclock gestartet");
 
   // Print software version
   Serial.println("");
@@ -165,22 +171,22 @@ void setup()
   }
 
   // Connect to the network
-  WiFi.begin(ssid, password);             
+  WiFi.begin(ssid, password);
   Serial.print("Connecting to ");
   Serial.print(ssid); Serial.println(" ...");
 
   int i = 0;
   // Wait for the Wi-Fi to connect
-  while (WiFi.status() != WL_CONNECTED) { 
+  while (WiFi.status() != WL_CONNECTED) {
     delay(1000);
     Serial.print(++i); Serial.print(' ');
   }
 
   // Send the IP address of the ESP8266 to the computer
   Serial.println('\n');
-  Serial.println("Connection established!");  
+  Serial.println("Connection established!");
   Serial.print("IP address:\t");
-  Serial.println(WiFi.localIP());         
+  Serial.println(WiFi.localIP());
 
   {
     // Successful connected to local wifi...
@@ -349,6 +355,9 @@ void Runnable_1000_ms()
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
+
+  logger.handle();   // <<< WICHTIG
+  logger.info("Wordclock loop running");
 }
 
 /**
@@ -361,7 +370,7 @@ void WebSocketReceive(uint8_t *payload, uint8_t length)
 {
   String command;
   String data;
-  
+
   // Stringify payload
   for(uint8_t i=0u; i<length; i++) {
     // First 3 characters should contain the command
