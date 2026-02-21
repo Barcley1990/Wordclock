@@ -1,4 +1,5 @@
 #include "logger.h"
+#include <LittleFS.h>
 
 /**
  * @brief Start the logger server.
@@ -17,10 +18,10 @@ void Logger::handle() {
   if (server.hasClient()) {
     if (!client || !client.connected()) {
       client = server.accept();
-      Serial.println("[LOGGER] Telnet client verbunden");
-      client.println("Telnet Logger verbunden");
+      Serial.println("[LOGGER] Telnet client connected");
+      client.println("Telnet logger connected");
     } else {
-      server.accept().stop(); // nur 1 Client
+      server.accept().stop(); // only 1 client
     }
   }
 }
@@ -55,6 +56,22 @@ void Logger::info (const String& msg) { log(LOG_INFO,  "INFO ", msg); }
 void Logger::debug(const String& msg) { log(LOG_DEBUG, "DEBUG", msg); }
 
 /**
+ * @brief Enable persistent error file logging.
+ * @param path LittleFS path.
+ */
+void Logger::enableErrorFileLogging(const String& path) {
+  errorFilePath = path;
+}
+
+/**
+ * @brief Set timestamp provider for persisted log entries.
+ * @param provider Function returning formatted timestamp.
+ */
+void Logger::setTimestampProvider(TimestampProvider provider) {
+  timestampProvider = provider;
+}
+
+/**
  * @brief Internal log output.
  * @param level Message level.
  * @param prefix Prefix label.
@@ -69,5 +86,21 @@ void Logger::log(LogLevel level, const char* prefix, const String& msg) {
 
   if (client && client.connected()) {
     client.println(line);
+  }
+
+  if (level == LOG_ERROR && errorFilePath.length() > 0) {
+    String timestamp = String(millis()) + "ms";
+    if (timestampProvider != nullptr) {
+      const String provided = timestampProvider();
+      if (provided.length() > 0) {
+        timestamp = provided;
+      }
+    }
+
+    File f = LittleFS.open(errorFilePath, "a");
+    if (f) {
+      f.println(String("[") + timestamp + "] " + line);
+      f.close();
+    }
   }
 }

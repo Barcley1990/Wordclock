@@ -10,6 +10,8 @@ enum LogLevel {
 
 class Logger {
 public:
+  typedef String (*TimestampProvider)();
+
   /**
    * @brief Start the logger server.
    * @param port TCP port for Telnet logging.
@@ -46,11 +48,23 @@ public:
    * @param msg Message to log.
    */
   void debug(const String& msg);
+  /**
+   * @brief Enable persistent error file logging.
+   * @param path LittleFS path (for example /error.log).
+   */
+  void enableErrorFileLogging(const String& path);
+  /**
+   * @brief Set timestamp provider for persisted log entries.
+   * @param provider Function returning a formatted timestamp string.
+   */
+  void setTimestampProvider(TimestampProvider provider);
 
 private:
   WiFiServer server{23};
   WiFiClient client;
   LogLevel currentLevel = LOG_INFO;
+  String errorFilePath = "";
+  TimestampProvider timestampProvider = nullptr;
 
   /**
    * @brief Internal log output.

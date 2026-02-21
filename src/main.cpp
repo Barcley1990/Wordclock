@@ -12,6 +12,10 @@
 #include <NTPClient.h>
 #include <algorithm>
 
+extern "C" {
+#include <user_interface.h>
+}
+
 #include "ascii.h"
 #include "logger.h"
 #include "mcal.h"
@@ -53,6 +57,7 @@ bool wifiConnected = false;
   // GMT 0 = 0
 #define WORDCLOCK_TIME_OFFSET (3600u)
 #define WORDCLOCK_APPEARANCE_FILE "/appearance.cfg"
+#define WORDCLOCK_ERROR_LOG_FILE "/error.log"
 
 uint32_t gClockColor = 0u;
 uint8_t gClockBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
@@ -66,6 +71,7 @@ uint8_t gAmbientSampleIndex = 0u;
 uint8_t gAmbientSampleCount = 0u;
 float gAmbientFilteredLux = 0.0f;
 uint8_t gEffectiveBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
+bool gLittleFsMounted = false;
 
 
 /**
@@ -95,6 +101,67 @@ static void sendTimeToWs(const RtcDateTime& dt) {
            dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
   ws.textAll(datetimeBuffer);
 }
+
+/**
+ * @brief Build current timestamp string for persisted logger entries.
+ * @return Timestamp string in YYYY/MM/DD HH:MM:SS format.
+ */
+static String getCurrentLogTimestamp() {
+  if (wordclock != nullptr) {
+    const RtcDateTime dt = wordclock->getRTCDateTime();
+    if (dt.Year() >= 2024) {
+      char datetimeBuffer[25u] = "";
+      snprintf(datetimeBuffer, sizeof(datetimeBuffer), "%04d/%02d/%02d %02d:%02d:%02d",
+               dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+      return String(datetimeBuffer);
+    }
+  }
+  return String(millis()) + "ms";
+}
+
+/**
+ * @brief Convert reset reason code into human-readable text.
+ * @param reason Reset reason code from rst_info.
+ * @return Reset reason text.
+ */
+static const char* resetReasonToString(uint8_t reason) {
+  switch (reason) {
+    case REASON_DEFAULT_RST: return "Power-On";
+    case REASON_WDT_RST: return "Hardware WDT";
+    case REASON_EXCEPTION_RST: return "Exception";
+    case REASON_SOFT_WDT_RST: return "Software WDT";
+    case REASON_SOFT_RESTART: return "Software Restart";
+    case REASON_DEEP_SLEEP_AWAKE: return "Deep Sleep Wake";
+    case REASON_EXT_SYS_RST: return "External Reset";
+    default: return "Unknown";
+  }
+}
+
+/**
+ * @brief Detect and log reset cause on boot.
+ */
+static void logResetCause() {
+  const rst_info* info = ESP.getResetInfoPtr();
+  if (info == nullptr) {
+    logger.error("Reset detected: reason unavailable");
+    return;
+  }
+
+  String msg = "Reset detected: reason=" + String(resetReasonToString((uint8_t)info->reason)) +
+               " (" + String((int)info->reason) + ")";
+
+  if (info->reason == REASON_EXCEPTION_RST || info->reason == REASON_SOFT_WDT_RST || info->reason == REASON_WDT_RST) {
+    msg += ", exccause=" + String((int)info->exccause) +
+           ", epc1=0x" + String((unsigned long)info->epc1, HEX) +
+           ", epc2=0x" + String((unsigned long)info->epc2, HEX) +
+           ", epc3=0x" + String((unsigned long)info->epc3, HEX) +
+           ", excvaddr=0x" + String((unsigned long)info->excvaddr, HEX) +
+           ", depc=0x" + String((unsigned long)info->depc, HEX);
+  }
+
+  logger.error(msg);
+}
+
 
 /**
  * @brief Convert RGB color to hex string.
@@ -361,8 +428,8 @@ static void setupMdns() {
  * @brief Initialize async web server and routes.
  */
 static void setupWebServer() {
-  if (!LittleFS.begin()) {
-    logger.warn("LittleFS mount failed");
+  if (!gLittleFsMounted) {
+    logger.error("LittleFS not mounted, web files unavailable");
   }
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
@@ -527,6 +594,17 @@ static void setupWebServer() {
     logger.warn("Reset requested via web settings");
     restartTicker.once_ms(500, []() { ESP.restart(); });
   });
+  server.on("/api/logs/errors", HTTP_GET, [](AsyncWebServerRequest* request) {
+    if (!gLittleFsMounted) {
+      request->send(500, "text/plain", "LittleFS not mounted");
+      return;
+    }
+    if (!LittleFS.exists(WORDCLOCK_ERROR_LOG_FILE)) {
+      request->send(404, "text/plain", "No error logs available");
+      return;
+    }
+    request->send(LittleFS, WORDCLOCK_ERROR_LOG_FILE, "text/plain", true);
+  });
   server.serveStatic("/", LittleFS, "/");
   server.begin();
   logger.info("Web server started");
@@ -601,13 +679,21 @@ void setup() {
 
   Serial.begin(115200);
   delay(50);
+  gLittleFsMounted = LittleFS.begin();
   logger.begin(23);
   logger.setLevel(LOG_DEBUG);
+  logger.setTimestampProvider(getCurrentLogTimestamp);
+  if (gLittleFsMounted) {
+    logger.enableErrorFileLogging(WORDCLOCK_ERROR_LOG_FILE);
+  }
   logger.info("Booting");
+
 
   // Initialize led strip
   layout = new Layout_De_11x10();
   wordclock = new Wordclock(layout);
+
+  logResetCause();
 
 #if (WORDCLOCK_USE_WIFI == true)
   wifiConnected = connectWifiWithPortal();

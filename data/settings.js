@@ -6,6 +6,8 @@
   const autoLuxHighEl = document.getElementById("auto-lux-high");
   const autoBrightnessMinEl = document.getElementById("auto-brightness-min");
   const autoBrightnessMaxEl = document.getElementById("auto-brightness-max");
+  const errorLogForm = document.getElementById("errorlog-form");
+  const errorLogStatusEl = document.getElementById("errorlog-status");
 
   const form = document.getElementById("reset-form");
   const statusEl = document.getElementById("reset-status");
@@ -69,6 +71,15 @@
     }
   });
 
+  errorLogForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    errorLogStatusEl.textContent = "Starting download...";
+    window.location.href = "/api/logs/errors";
+    setTimeout(() => {
+      errorLogStatusEl.textContent = "If available, download started.";
+    }, 400);
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     statusEl.textContent = "Resetting controller...";
@@ -79,9 +90,9 @@
       });
 
       if (!res.ok) {
-      statusEl.textContent = "Reset request failed.";
-      return;
-    }
+        statusEl.textContent = "Reset request failed.";
+        return;
+      }
 
       statusEl.textContent = "Reset triggered.";
     } catch (err) {
