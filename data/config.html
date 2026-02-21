@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wordclock Setup</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>Wordclock Setup</h1>
+      <form id="wifi-form" class="form">
+        <label>
+          SSID
+          <input id="ssid" name="ssid" type="text" autocomplete="off" required />
+        </label>
+        <label>
+          Password
+          <input id="pass" name="pass" type="password" autocomplete="off" />
+        </label>
+        <button type="submit">Save & Connect</button>
+      </form>
+      <div class="status" id="status">Enter your WiFi credentials.</div>
+    </main>
+    <script src="/config.js"></script>
+  </body>
+</html>

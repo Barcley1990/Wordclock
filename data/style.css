@@ -1,0 +1,122 @@
+@font-face {
+  font-family: "SpaceMono";
+  src: local("Space Mono");
+}
+
+:root {
+  --bg: #0b0d12;
+  --fg: #e8eef7;
+  --muted: #8a93a4;
+  --accent: #7bd389;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 20% 20%, #1a1f2b, #0b0d12 60%);
+  color: var(--fg);
+  font-family: "SpaceMono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.wrap {
+  text-align: center;
+  padding: 24px;
+  width: min(540px, 95vw);
+}
+
+.menu {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.menu-link {
+  border: 1px solid #2d3548;
+  border-radius: 999px;
+  background: #141b27;
+  color: var(--fg);
+  text-decoration: none;
+  font-size: 13px;
+  padding: 8px 14px;
+}
+
+.menu-link.active {
+  border-color: var(--accent);
+}
+
+h1 {
+  margin: 0 0 16px 0;
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.time {
+  font-size: 40px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 12px 24px;
+  border: 1px solid #1f2634;
+  border-radius: 12px;
+  background: #0e121a;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.form {
+  display: grid;
+  gap: 12px;
+  margin: 12px auto 0;
+  width: min(360px, 90vw);
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: left;
+}
+
+input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #232a3a;
+  background: #0e121a;
+  color: var(--fg);
+}
+
+input[type="color"] {
+  height: 48px;
+  padding: 4px;
+}
+
+button {
+  margin-top: 4px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #2d3548;
+  background: #141b27;
+  color: var(--fg);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+.status {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--accent);
+}

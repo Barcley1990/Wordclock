@@ -105,49 +105,128 @@ private:
     RtcDS1302<ThreeWire>* _rtc = nullptr;
     ILayout* _layout = nullptr;
     
+    /**
+     * @brief Print date/time to Serial.
+     * @param dt Date/time to print.
+     */
     void printDateTime(const RtcDateTime& dt);
+    /**
+     * @brief Validate RTC state and update if required.
+     */
     void checkRTCTime();
     
 public:
+    /**
+     * @brief Construct a new Wordclock.
+     * @param layout Layout implementation for the matrix.
+     */
     Wordclock(ILayout* layout);
+    /**
+     * @brief Destroy the Wordclock instance.
+     */
     ~Wordclock();
 
     // Comon Functions
+    /**
+     * @brief Turn LED power on.
+     */
     void powerOn();
+    /**
+     * @brief Turn LED power off.
+     */
     void powerOff();
+    /**
+     * @brief Get LED power state.
+     * @return true if powered on.
+     */
     bool getPowerState() {
         return _ledPowerState;
     };
+    /**
+     * @brief Get current hue.
+     * @return Hue value.
+     */
     uint8_t getHue() {
         return _hue;
     };
+    /**
+     * @brief Get current saturation.
+     * @return Saturation value.
+     */
     uint8_t getSaturation() {
         return _saturation;
     };
+    /**
+     * @brief Get current brightness.
+     * @return Brightness value.
+     */
     uint8_t getBrightness() {
         return _brightness;
     };
+    /**
+     * @brief Get current HSV color.
+     * @return HSV color value.
+     */
     uint32_t getHSVColor() {
         return _colorHSV;
     }
 
     // Clock Functions
+    /**
+     * @brief Set displayed time.
+     * @param hour Hour.
+     * @param minute Minute.
+     */
     void setTime(uint8_t hour, uint8_t minute);
+    /**
+     * @brief Clear internal frame buffer.
+     */
     void clearFrame();
 
     // LED Functions
+    /**
+     * @brief Set pixel color at XY coordinate.
+     * @param x Matrix X position.
+     * @param y Matrix Y position.
+     * @param c Color value.
+     */
     void setPixelColorXY(uint8_t x, uint8_t y, uint32_t c);
+    /**
+     * @brief Update active pixels with given color.
+     * @param color HSV color value.
+     */
     void updateColor(uint32_t color);
+    /**
+     * @brief Update active pixels with HSV values.
+     * @param h Hue.
+     * @param s Saturation.
+     * @param v Brightness.
+     */
     void updateColor(uint16_t h, uint8_t s, uint8_t v);
     
     // RTC Functions
+    /**
+     * @brief Set RTC date/time.
+     * @param dt Date/time.
+     */
     void setRTCDateTime(RtcDateTime dt);
+    /**
+     * @brief Get RTC date/time.
+     * @return Current date/time.
+     */
     RtcDateTime getRTCDateTime();
 
     // NTP
+    /**
+     * @brief Fetch date/time via NTP (if implemented).
+     */
     void getNTPDateTime();
     
     // LDR Functions
+    /**
+     * @brief Get ambient brightness in lux.
+     * @return Ambient brightness.
+     */
     float getAmbBrightness();
 };
 

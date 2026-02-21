@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wordclock Color Settings</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <nav class="menu">
+        <a class="menu-link" href="/">Home</a>
+        <a class="menu-link active" href="/color.html">Color Settings</a>
+        <a class="menu-link" href="/settings.html">Settings</a>
+      </nav>
+      <h1>Color Settings</h1>
+      <form id="color-form" class="form">
+        <label>
+          Clock Color
+          <input id="color" name="color" type="color" value="#ff00ff" />
+        </label>
+        <label>
+          Brightness
+          <input id="brightness" name="brightness" type="range" min="1" max="255" value="127" />
+          <span id="brightness-value">127</span>
+        </label>
+        <button type="submit">Save Settings</button>
+      </form>
+      <div class="status" id="status">Loading current settings...</div>
+    </main>
+    <script src="/color.js"></script>
+  </body>
+</html>

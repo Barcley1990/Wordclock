@@ -18,6 +18,10 @@
 /***********************************************************************************************************************
  * Function definitions
  ***********************************************************************************************************************/
+/**
+ * @brief Construct a new Wordclock instance.
+ * @param layout Layout implementation for the matrix.
+ */
 Wordclock::Wordclock(ILayout* layout) :
   Adafruit_NeoPixel((layout->getMatrixCols()*layout->getMatrixRows()) + 4u , MCAL_LED_DIN_PIN)
 {
@@ -45,6 +49,9 @@ Wordclock::Wordclock(ILayout* layout) :
   checkRTCTime();
 }
 
+/**
+ * @brief Destroy the Wordclock instance.
+ */
 Wordclock::~Wordclock()
 {
     powerOff();
@@ -58,6 +65,9 @@ Wordclock::~Wordclock()
  * @brief Turn LED power off to safe energy
  *
  */
+/**
+ * @brief Turn LED power off.
+ */
 void Wordclock::powerOff()
 {
   digitalWrite(MCAL_LED_EN_PIN, LOW);
@@ -68,6 +78,9 @@ void Wordclock::powerOff()
 /**
  * @brief Turn LED power on
  *
+ */
+/**
+ * @brief Turn LED power on.
  */
 void Wordclock::powerOn()
 {
@@ -80,6 +93,11 @@ void Wordclock::powerOn()
 /**
  * @brief
  *
+ */
+/**
+ * @brief Set the displayed time.
+ * @param h Hour.
+ * @param m Minute.
  */
 void Wordclock::setTime(uint8_t h, uint8_t m)
 {
@@ -250,8 +268,8 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
 }
 
 /**
- *
-*/
+ * @brief Clear the internal layout frame buffer.
+ */
 void Wordclock::clearFrame()
 {
   _layout->clearMatrix();
@@ -306,19 +324,14 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
   setPixelColor(i, c);
 }
 
+/**
+ * @brief Update the current color for all active pixels.
+ * @param color HSV color value.
+ */
 void Wordclock::updateColor(uint32_t color)
 {
-  uint8_t rows = _layout->getMatrixRows();
-  uint8_t cols = _layout->getMatrixCols();
-  uint8_t numleds = rows * cols;
-  
   // Update HSV color in case function was called from outside
   _colorHSV = color;
-
-  setPixelColor(numleds+0u, _colorHSV);
-  setPixelColor(numleds+1u, _colorHSV);
-  setPixelColor(numleds+2u, _colorHSV);
-  setPixelColor(numleds+3u, _colorHSV);
 
   for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
   {
@@ -338,14 +351,14 @@ void Wordclock::updateColor(uint32_t color)
 
 /**
  * @brief updateColor
- * 
- * @param h Hue 
+ *
+ * @param h Hue
  * @param s Saturation
  * @param v Brightness
  */
 void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
 {
-  // Apply gamma correction 
+  // Apply gamma correction
   _colorHSV = gamma32(ColorHSV(h, s, v));
 
   for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
@@ -365,9 +378,7 @@ void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
 }
 
 /**
- * @brief Check RTC
- *
- * @return RtcDateTime
+ * @brief Validate RTC state and update if required.
  */
 void Wordclock::checkRTCTime()
 {
@@ -479,9 +490,8 @@ float Wordclock::getAmbBrightness()
 //******************************************************************
 // PRIVATE FUNCTIONS
 /**
- * @brief
- *
- * @param dt
+ * @brief Print date/time to Serial.
+ * @param dt Date/time to print.
  */
 void Wordclock::printDateTime(const RtcDateTime& dt)
 {

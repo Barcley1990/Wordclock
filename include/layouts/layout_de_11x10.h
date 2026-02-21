@@ -24,19 +24,42 @@ B S E C H S F M U H R    ==> SECHS UHR
 class Layout_De_11x10 : public ILayout
 {
 public:
+    /**
+     * @brief Construct a new layout instance.
+     */
     Layout_De_11x10() : ILayout()
     {
         _layoutRows = ROWS;
         _layoutCols = COLUMNS;
     }
+    /**
+     * @brief Destroy the layout instance.
+     */
     ~Layout_De_11x10() {}
 
+    /**
+     * @brief Get matrix row count.
+     * @return Number of rows.
+     */
     uint8_t getMatrixRows() override {return _layoutRows;}
 
+    /**
+     * @brief Get matrix column count.
+     * @return Number of columns.
+     */
     uint8_t getMatrixCols() override {return _layoutCols;}
 
+    /**
+     * @brief Clear the matrix buffer.
+     */
     void clearMatrix() {std::fill_n(_matrixBuffer, ROWS, 0u);}
 
+    /**
+     * @brief Set a matrix pixel.
+     * @param col Column index.
+     * @param row Row index.
+     * @param state Pixel state.
+     */
     void setMatrixPixel(uint8_t col, uint8_t row, bool state) override
     {
         if((col>COLUMNS) || (row>ROWS)) return;
@@ -47,16 +70,31 @@ public:
         }
     }
 
+    /**
+     * @brief Get a matrix pixel.
+     * @param col Column index.
+     * @param row Row index.
+     * @return Pixel state.
+     */
     bool getMatrixPixel(uint8_t col, uint8_t row)
     {
         return ((_matrixBuffer[row] >> (COLUMNS-col)) & 0x1);
     }
 
+    /**
+     * @brief Get a matrix pixel by index (not implemented).
+     * @param i Linear index.
+     * @return Pixel state.
+     */
     bool getMatrixPixel(uint16_t i)
     {
         return 0;
     }
 
+    /**
+     * @brief Set matrix term for word display.
+     * @param term Term to display.
+     */
     void setMatrixTerm(Terms term) override
     {
         switch (term)

@@ -39,24 +39,63 @@ private:
 
 
 public:
+    /**
+     * @brief Construct a new ILayout.
+     */
     ILayout(/* args */) = default;
 
+    /**
+     * @brief Destroy the ILayout.
+     */
     virtual ~ILayout() = default;
 
+    /**
+     * @brief Get matrix row count.
+     * @return Number of rows.
+     */
     virtual uint8_t getMatrixRows() = 0;
 
+    /**
+     * @brief Get matrix column count.
+     * @return Number of columns.
+     */
     virtual uint8_t getMatrixCols() = 0;
 
+    /**
+     * @brief Clear the matrix buffer.
+     */
     virtual void clearMatrix() = 0;
 
+    /**
+     * @brief Set a matrix pixel.
+     * @param col Column index.
+     * @param row Row index.
+     * @param state Pixel state.
+     */
     virtual void setMatrixPixel(uint8_t col, uint8_t row, bool state) = 0;
 
+    /**
+     * @brief Get a matrix pixel.
+     * @param col Column index.
+     * @param row Row index.
+     * @return Pixel state.
+     */
     virtual bool getMatrixPixel(uint8_t col, uint8_t row) = 0;
 
+    /**
+     * @brief Set background pixels if supported.
+     */
     virtual void setMatrixBackground() {};
 
+    /**
+     * @brief Set a term in the matrix.
+     * @param terms Term to display.
+     */
     virtual void setMatrixTerm(Terms terms) = 0;
 
+    /**
+     * @brief Optional layout update tick.
+     */
     virtual void run() {};
 };
 

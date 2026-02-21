@@ -1,78 +1,22 @@
-<!doctype html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name=description content="">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wordclock</title>
-
-<link rel="stylesheet" type="text/css" href="/css/style.css">
-<link rel="stylesheet" type="text/css" href="/css/color-picker.css" />
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"/>
-<script type="text/javascript" src="/js/color-picker.js"></script>	
-</head>
-
-<body>
-
-<div class="container">
-	<header>
-		<span class="headline" >Wordclock</span> 
-	</header>
-		
-    <article>
-		<div style="margin: 20px;">
-			
-			<div style="margin-top: 5px;">
-				<p class="inline">Current RTC time: </p>
-				<p class="inline" id="id_time"></p>
-			</div>
-			<br>
-			<div>
-				<p class="inline"> Current ambient brightness:</p>
-				<p class="inline" id="id_ambient"></p>
-				<p class="inline"> Lux</p>
-			</div>
-			<br>
-			<div>
-				<button class="button" type="button" id="id_button_reset">ESP Reset</button>
-			</div>
-			<div>
-				<button class="button" type="button" id="id_button_ledpwr">LEDs Off</button>
-			</div>
-			<br><br>
-			
-			<div class="flip-container">
-				<div class="flipper">
-					<div class="front color-picker-dark-theme"></div>
-					<div class="back color-picker-light-theme"></div>
-				</div>
-			</div>
-
-		</div>
-		
-	</article>
-    
-	<aside>
-		<div class="sidebar">
-			<ul>
-			 <li><a href="/index"><i class="fas fa-qrcode"></i>Dashboard</a></li>
-			 <li><a href="/update"><i class="fas fa-link"></i>Update</a></li>
-			</ul>
-			<a class="version" id="id_version">version</a>
-		</div>
-	</aside>
-
-
-    <footer>
-		<p></p>
-	</footer>
-</div>
-
-
-	<script type="text/javascript" src="/js/jquery.js"></script>	
-	<script type="text/javascript" src="/js/index.js"></script>
-
-	
-	
-</body>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wordclock</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <nav class="menu">
+        <a class="menu-link active" href="/">Home</a>
+        <a class="menu-link" href="/color.html">Color Settings</a>
+        <a class="menu-link" href="/settings.html">Settings</a>
+      </nav>
+      <h1>Wordclock</h1>
+      <div class="time" id="time">--:--:--</div>
+      <div class="status" id="status">Connecting...</div>
+    </main>
+    <script src="/app.js"></script>
+  </body>
 </html>

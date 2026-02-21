@@ -1,440 +1,581 @@
+#include <Arduino.h>
+#include <cstring>
+#include <ESP8266WiFi.h>
+#include <WiFiUdp.h>
+#include <ArduinoOTA.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <LittleFS.h>
+#include <DNSServer.h>
+#include <Ticker.h>
+#include <ESP8266mDNS.h>
+#include <NTPClient.h>
+#include <algorithm>
 
-/**********************************************************************************************************************
- * @file main.cpp
- * @author Tobias Nuß
- * @brief
- * @version 0.1
- * @date 2023-04-06
- *
- * @copyright Copyright (c) 2023
- *
- ***********************************************************************************************************************/
-
-/***********************************************************************************************************************
- * Include Area
- ***********************************************************************************************************************/
 #include "ascii.h"
+#include "logger.h"
 #include "mcal.h"
-#include "version.h"
 #include "wordclock.h"
 #include "debounce.h"
 #include "layouts/ilayout.h"
 #include "layouts/layout_de_11x10.h"
-#include "logger.h"
 
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <DNSServer.h>
-#include <ESP8266mDNS.h>
-#include <WiFiManager.h>
-#include <WebSocketsServer.h>
-#include <ESP8266HTTPUpdateServer.h>
-#include <LittleFS.h>
-#include <Arduino_JSON.h>
-#include <RtcDateTime.h>
-#include <NTPClient.h>
-#include <WiFiUdp.h>
+/**
+ * @brief Boot pin callback.
+ */
+void BootPinCbk();
+
+ILayout* layout;
+Wordclock* wordclock;
+WiFiUDP ntpUDP;
+NTPClient timeClient(ntpUDP, "pool.ntp.org");
+AsyncWebServer server(80);
+AsyncWebSocket ws("/ws");
+DNSServer dnsServer;
+Ticker restartTicker;
+Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
+bool portalActive = false;
+Logger logger;
+bool wifiConnected = false;
 
 #define WORDCLOCK_BRIGHNESS_LIMIT (127u)
 #define WORDCLOCK_USE_WIFI (true)
-#define WORDCLOCK_WIFI_TIMEOUT  (20u)
+// OTA settings
+#define WORDCLOCK_OTA_HOSTNAME "wordclock"
+// Leave empty to disable OTA password
+#define WORDCLOCK_OTA_PASSWORD ""
+// mDNS hostname
+#define WORDCLOCK_MDNS_HOSTNAME "wordclock"
 // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT +8 = 28800
   // GMT -1 = -3600
   // GMT 0 = 0
 #define WORDCLOCK_TIME_OFFSET (3600u)
+#define WORDCLOCK_APPEARANCE_FILE "/appearance.cfg"
 
-/***********************************************************************************************************************
- * Private Variables
- ***********************************************************************************************************************/
-static bool WiFi_Setup_Successful = false;
-static uint32_t old_time_100 = 0u;
-static uint32_t old_time_1000 = 0u;
+uint32_t gClockColor = 0u;
+uint8_t gClockBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
+bool gAutoBrightnessEnabled = false;
+float gAutoLuxLow = 5.0f;
+float gAutoLuxHigh = 300.0f;
+uint8_t gAutoBrightnessMin = 12u;
+uint8_t gAutoBrightnessMax = WORDCLOCK_BRIGHNESS_LIMIT;
+float gAmbientSamples[10] = {0.0f};
+uint8_t gAmbientSampleIndex = 0u;
+uint8_t gAmbientSampleCount = 0u;
+float gAmbientFilteredLux = 0.0f;
+uint8_t gEffectiveBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
 
-const char* mdns_name = "Wordclock";
-const char* ssid      = "TARDIS";
-const char* password  = "82uqFnUSjUn7YL";
 
-const char* WEBSOCKET_COMMAND_SET_HSV = "095";
-const char* WEBSOCKET_COMMAND_LEDPWR_OFF = "096";
-const char* WEBSOCKET_COMMAND_LEDPWR_ON = "097";
-const char* WEBSOCKET_COMMAND_ESP_RESET = "020";
-const char* WEBSOCKET_COMMAND_WEBSOCKET_RDY = "021";
-
-const char* JSON_KEY_AMBIENT = "Light";
-const char* JSON_KEY_TIME = "Time";
-const char* JSON_KEY_VERSION = "Version";
-const char* JSON_KEY_LED_PWR_STATE = "PwrState";
-const char* JSON_KEY_BRIGHTNESS = "Brightness";
-const char* JSON_KEY_HSV_COLOR = "HSV";
-
-/***********************************************************************************************************************
- * Local function declarations and objects
- ***********************************************************************************************************************/
-void Runnable_100_ms();
-void Runnable_1000_ms();
-void WebSocketReceive(uint8_t* payload, uint8_t length);
-void WebSocketSend(String key, const void* data);
-void BootPinCbk();
-String GetVersion();
-
-IPAddress local_IP(192, 168, 178, 90);
-IPAddress gateway(192, 168, 178, 1);
-IPAddress subnet(255, 255, 255, 255);
-ESP8266WebServer HtmlServer(80);
-WebSocketsServer webSocket = WebSocketsServer(81);
-ESP8266HTTPUpdateServer OTAServer;
-ILayout* layout;
-Wordclock* wordclock;
-Debounce bootButton(MCAL_BOOT_PIN, 5000u, 100u, BootPinCbk);
-// Define NTP Client to get time
-WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org");
-Logger logger;
-
-/***********************************************************************************************************************
- * Function definitions
- ***********************************************************************************************************************/
 /**
- * @brief Main init funciton. Called only once from within main
-*/
-void setup()
-{
-  // Initialize GPIOs
-  pinMode(MCAL_WIFI_EN_PIN, INPUT);
-  pinMode(MCAL_BOOT_PIN, INPUT);
-  pinMode(MCAL_LED_EN_PIN, OUTPUT);
-  pinMode(MCAL_DAT_PIN,OUTPUT);
-  pinMode(MCAL_CLK_PIN,OUTPUT);
-  pinMode(MCAL_RST_PIN,OUTPUT);
-  digitalWrite(MCAL_LED_EN_PIN, LOW);
+ * @brief WebSocket event handler.
+ */
+static void onWsEvent(AsyncWebSocket* serverPtr, AsyncWebSocketClient* client,
+                      AwsEventType type, void* arg, uint8_t* data, size_t len) {
+  (void)serverPtr;
+  (void)client;
+  (void)arg;
+  (void)data;
+  (void)len;
+  if (type == WS_EVT_CONNECT) {
+    logger.info("WebSocket client connected");
+  } else if (type == WS_EVT_DISCONNECT) {
+    logger.info("WebSocket client disconnected");
+  }
+}
 
-  // Start serial inteface
-  Serial.begin(115200);
-  delay(100);
+/**
+ * @brief Send current time to all WebSocket clients.
+ * @param dt Current RTC date/time.
+ */
+static void sendTimeToWs(const RtcDateTime& dt) {
+  char datetimeBuffer[25u] = "";
+  snprintf(datetimeBuffer, sizeof(datetimeBuffer), "%04d/%02d/%02d %02d:%02d:%02d",
+           dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
+  ws.textAll(datetimeBuffer);
+}
 
-  logger.begin();              // Telnet starten
-  logger.setLevel(LOG_DEBUG);  // Loglevel setzen
-  logger.info("Wordclock gestartet");
+/**
+ * @brief Convert RGB color to hex string.
+ * @param color 24-bit RGB value.
+ * @return Hex string formatted as #RRGGBB.
+ */
+static String colorToHexString(uint32_t color) {
+  char buf[8] = "";
+  snprintf(buf, sizeof(buf), "#%06lX", (unsigned long)(color & 0xFFFFFFu));
+  return String(buf);
+}
 
-  // Print software version
-  Serial.println("");
-  Serial.println("");
-  Serial.println(header);
-  Serial.println("");
-  Serial.println("");
-  Serial.println("--------------------------------------");
-  Serial.print("\nVersion: ");
-  Serial.println(GetVersion());
-  Serial.printf("Chip ID         : %08X\n", ESP.getChipId());
-  Serial.printf("Flash ID        : %08X\n\n", ESP.getFlashChipId());
-  Serial.printf("CPU Speed       : %u MHz \n\n", ESP.getCpuFreqMHz());
+/**
+ * @brief Calculate the median from sampled ambient readings.
+ * @return Median ambient lux.
+ */
+static float getAmbientMedianLux() {
+  if (gAmbientSampleCount == 0u) {
+    return 0.0f;
+  }
 
-  Serial.printf("Flash real Size : %u KByte\n",
-                ESP.getFlashChipRealSize() / 1024);
-  Serial.printf("Flash ide  Size : %u KByte\n",
-                ESP.getFlashChipSize() / 1024);
-  Serial.printf("Flash ide Speed : %u\n\n", ESP.getFlashChipSpeed());
+  float sorted[10] = {0.0f};
+  for (uint8_t i = 0u; i < gAmbientSampleCount; ++i) {
+    sorted[i] = gAmbientSamples[i];
+  }
+  std::sort(sorted, sorted + gAmbientSampleCount);
 
-  Serial.printf("Free Heap Size  : %u Byte\n", ESP.getFreeHeap());
-  Serial.printf("Sketch Size     : %u Byte \n", ESP.getSketchSize());
-  Serial.printf("Free Sketch Size: %u Byte \n\n", ESP.getFreeSketchSpace());
+  if ((gAmbientSampleCount & 0x01u) != 0u) {
+    return sorted[gAmbientSampleCount / 2u];
+  }
 
-  Serial.printf("SDK Version     : %s\n", ESP.getSdkVersion());
-  Serial.print("RESET Info      : ");
-  Serial.println(ESP.getResetInfo());
-  Serial.print("COMPILED        : ");
-  Serial.print(__DATE__);
-  Serial.print(" ");
-  Serial.println(__TIME__);
+  const uint8_t idx = gAmbientSampleCount / 2u;
+  return (sorted[idx - 1u] + sorted[idx]) * 0.5f;
+}
 
-  Serial.println("--------------------------------------");
-  Serial.println("Ende Setup");
-  Serial.println("--------------------------------------");
-  Serial.println("");
-  delay(100);
+/**
+ * @brief Calculate active brightness based on current settings.
+ * @return Brightness to apply.
+ */
+static uint8_t getTargetBrightness() {
+  if (!gAutoBrightnessEnabled) {
+    return gClockBrightness;
+  }
 
+  if (gAutoLuxHigh <= gAutoLuxLow) {
+    return gAutoBrightnessMax;
+  }
 
-#if (WORDCLOCK_USE_WIFI == true)
-  // Initialize LittleFS
-  Serial.print("Try to initialize LittleFS... ");
-  //LittleFS.format();
-  if (!LittleFS.begin())
-  {
-    Serial.println("-> An error has occurred while mounting LittleFS. End Setup!\n");
+  float ratio = (gAmbientFilteredLux - gAutoLuxLow) / (gAutoLuxHigh - gAutoLuxLow);
+  if (ratio < 0.0f) {
+    ratio = 0.0f;
+  } else if (ratio > 1.0f) {
+    ratio = 1.0f;
+  }
+
+  const float scaled = (float)gAutoBrightnessMin +
+                       ratio * ((float)gAutoBrightnessMax - (float)gAutoBrightnessMin);
+  return (uint8_t)scaled;
+}
+
+/**
+ * @brief Apply current color and brightness to the wordclock.
+ */
+static void applyClockAppearance() {
+  gEffectiveBrightness = getTargetBrightness();
+  wordclock->setBrightness(gEffectiveBrightness);
+  wordclock->updateColor(gClockColor);
+  wordclock->show();
+}
+
+/**
+ * @brief Parse #RRGGBB string to 24-bit RGB.
+ * @param hexColor Input color string.
+ * @param outColor Parsed color.
+ * @return true if parsing was successful.
+ */
+static bool parseHexColor(const String& hexColor, uint32_t* outColor) {
+  if (outColor == nullptr) {
+    return false;
+  }
+
+  if (hexColor.length() != 7 || hexColor.charAt(0) != '#') {
+    return false;
+  }
+
+  char* end = nullptr;
+  const unsigned long value = strtoul(hexColor.substring(1).c_str(), &end, 16);
+  if (end == nullptr || *end != '\0' || value > 0xFFFFFFul) {
+    return false;
+  }
+
+  *outColor = (uint32_t)value;
+  return true;
+}
+
+/**
+ * @brief Load persisted appearance settings from LittleFS.
+ * @return true if at least one appearance field was loaded.
+ */
+static bool loadAppearanceFromFs() {
+  File f;
+  if (LittleFS.exists(WORDCLOCK_APPEARANCE_FILE)) {
+    f = LittleFS.open(WORDCLOCK_APPEARANCE_FILE, "r");
+  } else {
+    return false;
+  }
+  if (!f) {
+    logger.warn("Appearance file open failed");
+    return false;
+  }
+
+  bool loadedAny = false;
+  while (f.available()) {
+    String line = f.readStringUntil('\n');
+    line.trim();
+    if (line.startsWith("color=")) {
+      uint32_t parsedColor = 0u;
+      const String value = line.substring(6);
+      if (parseHexColor(value, &parsedColor)) {
+        gClockColor = parsedColor;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("#")) {
+      // Legacy format: single #RRGGBB line in /color.txt
+      uint32_t parsedColor = 0u;
+      if (parseHexColor(line, &parsedColor)) {
+        gClockColor = parsedColor;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("brightness=")) {
+      const String value = line.substring(11);
+      const long parsed = value.toInt();
+      if (parsed >= 1 && parsed <= 255) {
+        gClockBrightness = (uint8_t)parsed;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("auto_enabled=")) {
+      const String value = line.substring(13);
+      gAutoBrightnessEnabled = (value.toInt() != 0);
+      loadedAny = true;
+    } else if (line.startsWith("auto_lux_low=")) {
+      const String value = line.substring(13);
+      const float parsed = value.toFloat();
+      if (parsed >= 0.0f) {
+        gAutoLuxLow = parsed;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("auto_lux_high=")) {
+      const String value = line.substring(14);
+      const float parsed = value.toFloat();
+      if (parsed >= 0.0f) {
+        gAutoLuxHigh = parsed;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("auto_brightness_min=")) {
+      const String value = line.substring(20);
+      const long parsed = value.toInt();
+      if (parsed >= 1 && parsed <= 255) {
+        gAutoBrightnessMin = (uint8_t)parsed;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("auto_brightness_max=")) {
+      const String value = line.substring(20);
+      const long parsed = value.toInt();
+      if (parsed >= 1 && parsed <= 255) {
+        gAutoBrightnessMax = (uint8_t)parsed;
+        loadedAny = true;
+      }
+    }
+  }
+  f.close();
+
+  if (!loadedAny) {
+    logger.warn("Appearance file content invalid");
+    return false;
+  }
+
+  applyClockAppearance();
+  logger.info("Loaded appearance: color=" + colorToHexString(gClockColor) +
+              " brightness=" + String(gClockBrightness));
+  return true;
+}
+
+/**
+ * @brief Persist current appearance settings to LittleFS.
+ * @return true if settings saved successfully.
+ */
+static bool saveAppearanceToFs() {
+  File f = LittleFS.open(WORDCLOCK_APPEARANCE_FILE, "w");
+  if (!f) {
+    logger.warn("Appearance file write open failed");
+    return false;
+  }
+
+  f.println(String("color=") + colorToHexString(gClockColor));
+  f.println(String("brightness=") + String(gClockBrightness));
+  f.println(String("auto_enabled=") + String(gAutoBrightnessEnabled ? 1 : 0));
+  f.println(String("auto_lux_low=") + String(gAutoLuxLow, 2));
+  f.println(String("auto_lux_high=") + String(gAutoLuxHigh, 2));
+  f.println(String("auto_brightness_min=") + String(gAutoBrightnessMin));
+  f.println(String("auto_brightness_max=") + String(gAutoBrightnessMax));
+  f.close();
+  logger.info("Saved appearance");
+  return true;
+}
+
+/**
+ * @brief Connect to WiFi using stored credentials or start captive portal.
+ * @return true if connected to WiFi, false if portal started.
+ */
+static bool connectWifiWithPortal() {
+  WiFi.mode(WIFI_STA);
+  WiFi.persistent(true);
+  WiFi.setAutoConnect(true);
+  WiFi.setAutoReconnect(true);
+  WiFi.begin();
+
+  logger.info("WiFi connect: trying stored credentials");
+  const uint32_t start = millis();
+  while (WiFi.status() != WL_CONNECTED && (millis() - start) < 15000u) {
+    delay(250);
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    portalActive = false;
+    logger.info("WiFi connected: " + WiFi.localIP().toString());
+    return true;
+  }
+
+  // Start AP + captive portal if no stored credentials or connection failed
+  WiFi.mode(WIFI_AP);
+  WiFi.softAP("wordclock-setup");
+  dnsServer.start(53, "*", WiFi.softAPIP());
+  portalActive = true;
+  logger.warn("WiFi connect failed, started AP: wordclock-setup");
+  return false;
+}
+
+/**
+ * @brief Initialize Arduino OTA.
+ */
+static void setupOta() {
+  ArduinoOTA.setHostname(WORDCLOCK_OTA_HOSTNAME);
+  if (strlen(WORDCLOCK_OTA_PASSWORD) > 0) {
+    ArduinoOTA.setPassword(WORDCLOCK_OTA_PASSWORD);
+  }
+  ArduinoOTA.begin();
+  logger.info("OTA ready");
+}
+
+/**
+ * @brief Initialize mDNS service.
+ */
+static void setupMdns() {
+  if (!MDNS.begin(WORDCLOCK_MDNS_HOSTNAME)) {
+    logger.warn("mDNS start failed");
     return;
   }
-  else
-  {
-    Serial.println("-> LittleFS mounted successfully\n");
+  MDNS.addService("http", "tcp", 80);
+  logger.info(String("mDNS: http://") + WORDCLOCK_MDNS_HOSTNAME + ".local");
+}
+
+/**
+ * @brief Initialize async web server and routes.
+ */
+static void setupWebServer() {
+  if (!LittleFS.begin()) {
+    logger.warn("LittleFS mount failed");
   }
-
-  // Connect to the network
-  WiFi.begin(ssid, password);
-  Serial.print("Connecting to ");
-  Serial.print(ssid); Serial.println(" ...");
-
-  int i = 0;
-  // Wait for the Wi-Fi to connect
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
-    Serial.print(++i); Serial.print(' ');
-  }
-
-  // Send the IP address of the ESP8266 to the computer
-  Serial.println('\n');
-  Serial.println("Connection established!");
-  Serial.print("IP address:\t");
-  Serial.println(WiFi.localIP());
-
-  {
-    // Successful connected to local wifi...
-    Serial.print("Successfully connected! IP is: ");
-    Serial.println(WiFi.localIP());
-
-    // Configure html server
-    HtmlServer.onNotFound([](){
-        String message = "File Not Found\n\n";
-        message += "URI: ";
-        message += HtmlServer.uri();
-        message += "\nMethod: ";
-        message += (HtmlServer.method() == HTTP_GET) ? "GET" : "POST";
-        message += "\nArguments: ";
-        message += HtmlServer.args();
-        message += "\n";
-        for (uint8_t i = 0; i < HtmlServer.args(); i++) {
-          message += " " + HtmlServer.argName(i) + ": " + HtmlServer.arg(i) + "\n";
-        }
-        HtmlServer.send(404, "text/plain", message);
-    });
-    HtmlServer.serveStatic("/", LittleFS, "/index.html");
-    HtmlServer.serveStatic("/css/style.css", LittleFS, "/css/style.css");
-    HtmlServer.serveStatic("/css/color-picker.css", LittleFS, "/css/color-picker.css");
-    HtmlServer.serveStatic("/js/index.js", LittleFS, "/js/index.js");
-    HtmlServer.serveStatic("/js/color-picker.js", LittleFS, "/js/color-picker.js");
-    HtmlServer.serveStatic("/js/jquery.js", LittleFS, "/js/jquery.js");
-    HtmlServer.serveStatic("/update", LittleFS, "/update.html");
-    HtmlServer.serveStatic("/images/picker_dark_theme.png", LittleFS, "/images/picker_dark_theme.png");
-
-
-    // Configure WebSocket Server
-    webSocket.onEvent([](char num, WStype_t type, uint8_t* payload, size_t length){
-      String version = GetVersion();
-      switch (type)
-      {
-      case WStype_DISCONNECTED:
-        Serial.println("Client Disconnected");
-        break;
-      case WStype_CONNECTED:
-        Serial.println("Client Connected");
-        WebSocketSend(JSON_KEY_VERSION, &version);
-       // WebSocketSend("brightness", &wordclock->getBrightness());
-        break;
-      case WStype_TEXT:
-        Serial.print("Data Received: ");
-        WebSocketReceive(payload, length);
-        break;
-        //-Do Nothing-
-      case WStype_BIN:
-      case WStype_ERROR:
-      case WStype_FRAGMENT_TEXT_START:
-      case WStype_FRAGMENT_BIN_START:
-      case WStype_FRAGMENT:
-      case WStype_FRAGMENT_FIN:
-      default:
-        break;
-      }
-    });
-
-    // Initialize servers (HTML, WS, OTA, mDNS)
-    OTAServer.setup(&HtmlServer);
-    HtmlServer.begin();
-    webSocket.begin();
-    if (MDNS.begin(mdns_name)) {
-      Serial.print("DNS started: ");
-      Serial.println("http://" + String(mdns_name) + ".local/");
+  ws.onEvent(onWsEvent);
+  server.addHandler(&ws);
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
+    if (portalActive) {
+      request->send(LittleFS, "/config.html", "text/html");
+    } else {
+      request->send(LittleFS, "/index.html", "text/html");
     }
-    MDNS.addService("http", "tcp", 80);
+  });
+  server.on("/wifi", HTTP_POST, [](AsyncWebServerRequest* request) {
+    if (!request->hasParam("ssid", true) || !request->hasParam("pass", true)) {
+      request->send(400, "text/plain", "Missing ssid or pass");
+      logger.warn("WiFi portal: missing ssid or pass");
+      return;
+    }
+    const String ssid = request->getParam("ssid", true)->value();
+    const String pass = request->getParam("pass", true)->value();
+    request->send(200, "text/plain", "OK");
+    logger.info("WiFi portal: credentials received, restarting");
 
-    Serial.print("HTTP server started on port 80: ");
-    Serial.printf("HTTPUpdateServer (OTA) ready! Open http://%s.local/update in your browser\n", mdns_name);
-    WiFi_Setup_Successful = true;
-  }
-#endif
+    dnsServer.stop();
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_STA);
+    WiFi.persistent(true);
+    WiFi.setAutoConnect(true);
+    WiFi.setAutoReconnect(true);
+    WiFi.begin(ssid.c_str(), pass.c_str());
+    portalActive = false;
+    restartTicker.once_ms(1000, []() { ESP.restart(); });
+  });
+  server.on("/api/color", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send(200, "application/json",
+                  String("{\"color\":\"") + colorToHexString(gClockColor) +
+                  "\",\"brightness\":" + String(gClockBrightness) +
+                  ",\"effective_brightness\":" + String(gEffectiveBrightness) + "}");
+  });
+  server.on("/api/color", HTTP_POST, [](AsyncWebServerRequest* request) {
+    bool hasColor = request->hasParam("color", true);
+    bool hasBrightness = request->hasParam("brightness", true);
+    if (!hasColor && !hasBrightness) {
+      request->send(400, "application/json", "{\"error\":\"missing params\"}");
+      return;
+    }
 
-#if (WORDCLOCK_USE_WIFI == true)
-  // Initialize a NTPClient to get actual time
-  timeClient.begin();
-  timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
-  timeClient.update();
+    if (hasColor) {
+      const String colorParam = request->getParam("color", true)->value();
+      uint32_t parsedColor = 0u;
+      if (!parseHexColor(colorParam, &parsedColor)) {
+        request->send(400, "application/json", "{\"error\":\"invalid color\"}");
+        return;
+      }
+      gClockColor = parsedColor;
+    }
 
-  // Update RTC with server time
-  RtcDateTime dt;
-  dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
-#endif
+    if (hasBrightness) {
+      const String brightnessParam = request->getParam("brightness", true)->value();
+      const long parsedBrightness = brightnessParam.toInt();
+      if (parsedBrightness < 1 || parsedBrightness > 255) {
+        request->send(400, "application/json", "{\"error\":\"invalid brightness\"}");
+        return;
+      }
+      gClockBrightness = (uint8_t)parsedBrightness;
+    }
 
-  // Initialize led strip
-  layout = new Layout_De_11x10();
-  wordclock = new Wordclock(layout);
+    applyClockAppearance();
+    if (!saveAppearanceToFs()) {
+      request->send(500, "application/json", "{\"error\":\"save failed\"}");
+      return;
+    }
 
-  // Update RTC with server time
-  wordclock->setRTCDateTime(dt);
-  // Switch LED power on
-  wordclock->powerOn();
-  delay(100);
-  wordclock->begin();
-  wordclock->clear();
-  wordclock->setBrightness(WORDCLOCK_BRIGHNESS_LIMIT);
-  wordclock->show();
+    request->send(200, "application/json",
+                  String("{\"ok\":true,\"color\":\"") + colorToHexString(gClockColor) +
+                  "\",\"brightness\":" + String(gClockBrightness) +
+                  ",\"effective_brightness\":" + String(gEffectiveBrightness) + "}");
+  });
+  server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send(200, "application/json",
+                  String("{\"auto_brightness_enabled\":") + String(gAutoBrightnessEnabled ? "true" : "false") +
+                  ",\"auto_lux_low\":" + String(gAutoLuxLow, 2) +
+                  ",\"auto_lux_high\":" + String(gAutoLuxHigh, 2) +
+                  ",\"auto_brightness_min\":" + String(gAutoBrightnessMin) +
+                  ",\"auto_brightness_max\":" + String(gAutoBrightnessMax) +
+                  ",\"ambient_filtered_lux\":" + String(gAmbientFilteredLux, 2) + "}");
+  });
+  server.on("/api/settings", HTTP_POST, [](AsyncWebServerRequest* request) {
+    bool changed = false;
 
-  JSONVar clockData;
-  clockData[JSON_KEY_LED_PWR_STATE] = wordclock->getPowerState();
-  clockData[JSON_KEY_BRIGHTNESS] = wordclock->getBrightness();
-  clockData[JSON_KEY_VERSION] = GetVersion();
+    if (request->hasParam("auto_brightness_enabled", true)) {
+      const String value = request->getParam("auto_brightness_enabled", true)->value();
+      gAutoBrightnessEnabled = (value == "1" || value == "true" || value == "on");
+      changed = true;
+    }
+
+    if (request->hasParam("auto_lux_low", true)) {
+      const float value = request->getParam("auto_lux_low", true)->value().toFloat();
+      if (value < 0.0f) {
+        request->send(400, "application/json", "{\"error\":\"invalid auto_lux_low\"}");
+        return;
+      }
+      gAutoLuxLow = value;
+      changed = true;
+    }
+
+    if (request->hasParam("auto_lux_high", true)) {
+      const float value = request->getParam("auto_lux_high", true)->value().toFloat();
+      if (value < 0.0f) {
+        request->send(400, "application/json", "{\"error\":\"invalid auto_lux_high\"}");
+        return;
+      }
+      gAutoLuxHigh = value;
+      changed = true;
+    }
+
+    if (request->hasParam("auto_brightness_min", true)) {
+      const long value = request->getParam("auto_brightness_min", true)->value().toInt();
+      if (value < 1 || value > 255) {
+        request->send(400, "application/json", "{\"error\":\"invalid auto_brightness_min\"}");
+        return;
+      }
+      gAutoBrightnessMin = (uint8_t)value;
+      changed = true;
+    }
+
+    if (request->hasParam("auto_brightness_max", true)) {
+      const long value = request->getParam("auto_brightness_max", true)->value().toInt();
+      if (value < 1 || value > 255) {
+        request->send(400, "application/json", "{\"error\":\"invalid auto_brightness_max\"}");
+        return;
+      }
+      gAutoBrightnessMax = (uint8_t)value;
+      changed = true;
+    }
+
+    if (gAutoBrightnessMin > gAutoBrightnessMax) {
+      const uint8_t tmp = gAutoBrightnessMin;
+      gAutoBrightnessMin = gAutoBrightnessMax;
+      gAutoBrightnessMax = tmp;
+    }
+
+    if (gAutoLuxLow > gAutoLuxHigh) {
+      const float tmp = gAutoLuxLow;
+      gAutoLuxLow = gAutoLuxHigh;
+      gAutoLuxHigh = tmp;
+    }
+
+    if (!changed) {
+      request->send(400, "application/json", "{\"error\":\"no params\"}");
+      return;
+    }
+
+    applyClockAppearance();
+    if (!saveAppearanceToFs()) {
+      request->send(500, "application/json", "{\"error\":\"save failed\"}");
+      return;
+    }
+
+    request->send(200, "application/json", "{\"ok\":true}");
+  });
+  server.on("/api/reset", HTTP_POST, [](AsyncWebServerRequest* request) {
+    request->send(200, "application/json", "{\"ok\":true}");
+    logger.warn("Reset requested via web settings");
+    restartTicker.once_ms(500, []() { ESP.restart(); });
+  });
+  server.serveStatic("/", LittleFS, "/");
+  server.begin();
+  logger.info("Web server started");
 }
 
 /**
- * @brief Main loop  function. Called from main()
+ * @brief Runnable called every 100ms (approx.).
  */
-void loop()
-{
-  uint32_t sys_time = millis();
-
-  // check if 100ms passed
-  if ((uint32_t)(sys_time - old_time_100) >= 100u) {
-    old_time_100 = sys_time;
-    Runnable_100_ms();
-  }
-
-  // check if 1000ms passed
-  if ((uint32_t)(sys_time - old_time_1000) >= 1000u) {
-    old_time_1000 = sys_time;
-    Runnable_1000_ms();
-  }
-
-#if (WORDCLOCK_USE_WIFI == true)
-  // Execute Server Objects
-  if(WiFi_Setup_Successful == true)
-  {
-    HtmlServer.handleClient();
-    webSocket.loop();
-    MDNS.update();
-  }
-#endif
-}
-
-/**
- * @brief called every 100ms
- *
- */
-void Runnable_100_ms()
-{
+static void Runnable_100ms() {
   bootButton.poll();
+  logger.handle();
+
+  const float amb = wordclock->getAmbBrightness();
+  gAmbientSamples[gAmbientSampleIndex] = amb;
+  gAmbientSampleIndex = (uint8_t)((gAmbientSampleIndex + 1u) % 10u);
+  if (gAmbientSampleCount < 10u) {
+    gAmbientSampleCount++;
+  }
+  gAmbientFilteredLux = getAmbientMedianLux();
+
+  if (gAutoBrightnessEnabled) {
+    const uint8_t target = getTargetBrightness();
+    if (target != gEffectiveBrightness) {
+      gEffectiveBrightness = target;
+      wordclock->setBrightness(gEffectiveBrightness);
+    }
+  }
 }
 
 /**
- * @brief called every 1000ms
- *
+ * @brief Runnable called every 1000ms (approx.).
  */
-void Runnable_1000_ms()
-{
-  float lux = wordclock->getAmbBrightness();
+static void Runnable_1000ms() {
   RtcDateTime dt = wordclock->getRTCDateTime();
-
-  // Convert date-time to send to html server
-  char datetimeBuffer[25u] = "";
-  sprintf(datetimeBuffer, "%04d/%02d/%02d %02d:%02d:%02d",
-    dt.Year(), dt.Month(), dt.Day(), dt.Hour(), dt.Minute(), dt.Second());
-
-  // Send data to html server
-  String ambBrightness = (String)lux;
-  WebSocketSend(JSON_KEY_AMBIENT, &ambBrightness);
-  WebSocketSend(JSON_KEY_TIME, &datetimeBuffer);
-
+  ws.cleanupClients();
   wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
   wordclock->show();
-
-  logger.handle();   // <<< WICHTIG
-  logger.info("Wordclock loop running");
-}
-
-/**
- * @brief Receive Websocket Data
- *
- * @param payload
- * @param length
- */
-void WebSocketReceive(uint8_t *payload, uint8_t length)
-{
-  String command;
-  String data;
-
-  // Stringify payload
-  for(uint8_t i=0u; i<length; i++) {
-    // First 3 characters should contain the command
-    if(i<=2u) {
-      command += *(char*)payload++;
-    }
-    // Remaining characterst contain possilbe values
-    else {
-      data += *(char*)payload++;
-    }
-  }
-  Serial.println(data);
-
-  // Check for command
-  if(command == WEBSOCKET_COMMAND_ESP_RESET) {
-    ESP.reset();
-  }
-  else if(command == WEBSOCKET_COMMAND_WEBSOCKET_RDY) {
-    String c = String(wordclock->getHSVColor(), HEX);
-    WebSocketSend(JSON_KEY_HSV_COLOR, &c);
-  }
-  else if(command == WEBSOCKET_COMMAND_LEDPWR_OFF) {
-    Serial.println("Turn Leds off");
-    wordclock->powerOff();
-  }
-  else if(command == WEBSOCKET_COMMAND_LEDPWR_ON) {
-    Serial.println("Turn Leds on");
-    wordclock->powerOn();
-  }
-  else if(command == WEBSOCKET_COMMAND_SET_HSV) {
-    Serial.println("Update HSV to: " + data);
-    wordclock->updateColor((int)strtol(&data[1u], NULL, 16u));
-    wordclock->show();
-  }
-  else {
-    Serial.println("Unknown data received...");
-  }
-}
-
-/**
- * @brief Broadcast WebSocket Data
- *
- * @param key
- * @param data
- */
-void WebSocketSend(String key, const void* data)
-{
-  bool retVal;
-  JSONVar objects;
-  String jsonString;
-
-  // Build JSON object
-  objects[key] = *(String*)data;
-  jsonString = JSON.stringify(objects);
-  Serial.println("Sent JSON String: " + jsonString);
-
-  // Broadcast to all websocket clients
-  retVal = webSocket.broadcastTXT(jsonString);
-  if(retVal == false) Serial.println("Websocket broadcast failed!");
+  logger.debug("Ambient median lux: " + String(gAmbientFilteredLux, 2));
+  logger.debug("Wordclock time updated");
+  sendTimeToWs(dt);
 }
 
 /**
  * @brief Callback for boot pin
  *
+ */
+/**
+ * @brief Handle boot pin press.
  */
 void BootPinCbk()
 {
@@ -446,14 +587,85 @@ void BootPinCbk()
 }
 
 /**
- * @brief Get the Version object
- *
- * @return String
+ * @brief Arduino setup.
  */
-String GetVersion()
-{
-  return (String)(
-      String(SOFTWARE_VERSION_MAYOR)+ "." +
-      String(SOFTWARE_VERSION_MINOR)+ "." +
-      String(SOFTWARE_VERSION_PATCH));
+void setup() {
+  // Initialize GPIOs
+  pinMode(MCAL_WIFI_EN_PIN, INPUT);
+  pinMode(MCAL_BOOT_PIN, INPUT);
+  pinMode(MCAL_LED_EN_PIN, OUTPUT);
+  pinMode(MCAL_DAT_PIN,OUTPUT);
+  pinMode(MCAL_CLK_PIN,OUTPUT);
+  pinMode(MCAL_RST_PIN,OUTPUT);
+  digitalWrite(MCAL_LED_EN_PIN, LOW);
+
+  Serial.begin(115200);
+  delay(50);
+  logger.begin(23);
+  logger.setLevel(LOG_DEBUG);
+  logger.info("Booting");
+
+  // Initialize led strip
+  layout = new Layout_De_11x10();
+  wordclock = new Wordclock(layout);
+
+#if (WORDCLOCK_USE_WIFI == true)
+  wifiConnected = connectWifiWithPortal();
+  setupWebServer();
+  if (wifiConnected) {
+    setupOta();
+    setupMdns();
+
+    // Initialize a NTPClient to get actual time
+    timeClient.begin();
+    timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
+    timeClient.update();
+    logger.info("NTP time updated");
+
+    // Update RTC with server time
+    RtcDateTime dt;
+    dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
+    wordclock->setRTCDateTime(dt);
+  }
+#endif
+
+  // Switch LED power on
+  wordclock->powerOn();
+  delay(100);
+  wordclock->begin();
+  wordclock->clear();
+  gClockColor = wordclock->Color(255u, 0u, 255u);
+  gClockBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
+  applyClockAppearance();
+  if (!loadAppearanceFromFs()) {
+    saveAppearanceToFs();
+  }
+  wordclock->show();
+}
+
+/**
+ * @brief Arduino main loop.
+ */
+void loop() {
+  if (wifiConnected) {
+    ArduinoOTA.handle();
+    MDNS.update();
+  }
+  if (portalActive) {
+    dnsServer.processNextRequest();
+  }
+
+  static uint32_t last100msMs = 0u;
+  const uint32_t nowMs = millis();
+  if (nowMs - last100msMs >= 100u) {
+    last100msMs = nowMs;
+    Runnable_100ms();
+  }
+
+  static uint32_t last1000msMs = 0u;
+  if (nowMs - last1000msMs >= 1000u) {
+    last1000msMs = nowMs;
+    Runnable_1000ms();
+  }
+
 }
