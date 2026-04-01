@@ -648,6 +648,45 @@ static void Runnable_1000ms() {
   sendTimeToWs(dt);
 }
 
+// TODO: Improve DST handling by adding a user option on the web interface to select the timezone and DST rules, and calculating the offset accordingly. The current implementation is a simplified example for Central Europe only.
+static uint32_t calculateTimeOffset(const RtcDateTime& dt) {
+  // For Central Europe: DST starts last Sunday of March, ends last Sunday of October
+  int month = dt.Month();
+  int day = dt.Day();
+  int hour = dt.Hour();
+
+  // Before March or after October = winter time
+  if (month < 3 || month > 10) {
+    return 3600u;  // GMT +1 (CET)
+  }
+
+  // After October = winter time
+  if (month > 10) {
+    return 3600u;  // GMT +1 (CET)
+  }
+
+  // March: DST starts last Sunday of March at 2:00 AM
+  if (month == 3) {
+    int lastSunday = 31 - ((dt.DayOfWeek() + (31 - day)) % 7);
+    if (day < lastSunday || (day == lastSunday && hour < 2)) {
+      return 3600u;  // GMT +1 (CET)
+    }
+    return 7200u;  // GMT +2 (CEST)
+  }
+
+  // October: DST ends last Sunday of October at 3:00 AM
+  if (month == 10) {
+    int lastSunday = 31 - ((dt.DayOfWeek() + (31 - day)) % 7);
+    if (day > lastSunday || (day == lastSunday && hour >= 3)) {
+      return 3600u;  // GMT +1 (CET)
+    }
+    return 7200u;  // GMT +2 (CEST)
+  }
+
+  // April to September = summer time
+  return 7200u;  // GMT +2 (CEST)
+}
+
 /**
  * @brief Callback for boot pin
  *
@@ -704,12 +743,15 @@ void setup() {
 
     // Initialize a NTPClient to get actual time
     timeClient.begin();
-    timeClient.setTimeOffset(WORDCLOCK_TIME_OFFSET);
     timeClient.update();
     logger.info("NTP time updated");
 
     // Update RTC with server time
+    // TODO: Improve DST handling by adding a user option on the web interface to select the timezone and DST rules, and calculating the offset accordingly. The current implementation is a simplified example for Central Europe only.
     RtcDateTime dt;
+    dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
+    timeClient.setTimeOffset(calculateTimeOffset(dt));
+    timeClient.update();
     dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
     wordclock->setRTCDateTime(dt);
   }
