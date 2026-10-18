@@ -1,4 +1,8 @@
 (() => {
+  const animationForm = document.getElementById("animation-form");
+  const animationEl = document.getElementById("animation");
+  const animationSaveEl = document.getElementById("animation-save");
+  const animationStatusEl = document.getElementById("animation-status");
   const autoForm = document.getElementById("auto-form");
   const autoStatusEl = document.getElementById("auto-status");
   const autoEnabledEl = document.getElementById("auto-enabled");
@@ -18,10 +22,26 @@
       const res = await fetch("/api/settings", { cache: "no-store" });
       if (!res.ok) {
         autoStatusEl.textContent = "Failed to load settings.";
+        animationStatusEl.textContent = "Failed to load animation. Reload to retry.";
         return;
       }
 
       const data = await res.json();
+      if (Array.isArray(data.animation_options) && data.animation_options.length > 0) {
+        animationEl.replaceChildren();
+        data.animation_options.forEach(({ id, label }) => {
+          const option = document.createElement("option");
+          option.value = id;
+          option.textContent = label;
+          animationEl.appendChild(option);
+        });
+        animationEl.value = data.animation || "none";
+        animationEl.disabled = false;
+        animationSaveEl.disabled = false;
+        animationStatusEl.textContent = "Animation loaded.";
+      } else {
+        animationStatusEl.textContent = "Animation requires updated firmware.";
+      }
       autoEnabledEl.checked = Boolean(data.auto_brightness_enabled);
       if (typeof data.auto_lux_low === "number") {
         autoLuxLowEl.value = String(data.auto_lux_low);
@@ -38,8 +58,29 @@
       autoStatusEl.textContent = "Settings loaded.";
     } catch (err) {
       autoStatusEl.textContent = "Network error.";
+      animationStatusEl.textContent = "Failed to load animation. Reload to retry.";
     }
   };
+
+  animationForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    animationSaveEl.disabled = true;
+    animationStatusEl.textContent = "Saving animation...";
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ animation: animationEl.value }),
+      });
+      animationStatusEl.textContent = res.ok
+        ? "Saved. Plays at the next minute change."
+        : "Failed to save animation. Please retry.";
+    } catch (err) {
+      animationStatusEl.textContent = "Network error. Please retry.";
+    } finally {
+      animationSaveEl.disabled = false;
+    }
+  });
 
   autoForm.addEventListener("submit", async (e) => {
     e.preventDefault();

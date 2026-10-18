@@ -87,7 +87,8 @@ label {
   text-align: left;
 }
 
-input {
+input,
+select {
   padding: 10px 12px;
   border-radius: 8px;
   border: 1px solid #232a3a;
@@ -113,6 +114,19 @@ button {
 
 button:hover {
   border-color: var(--accent);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: left;
 }
 
 .status {

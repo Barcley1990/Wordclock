@@ -37,6 +37,7 @@ B S E C H S F M U H R    ==> SECHS UHRx        109<------------99
 
 #include "mcal.h"
 #include "layouts/ilayout.h"
+#include "clock_animation.h"
 
 #define MATRIX_SERPENTINELAYOUT (true)
 #define MATRIX_VERTIACAL        (false)
@@ -104,6 +105,7 @@ private:
     ThreeWire* _myWire = nullptr;
     RtcDS1302<ThreeWire>* _rtc = nullptr;
     ILayout* _layout = nullptr;
+    ClockAnimation::Animator _animator;
     
     /**
      * @brief Print date/time to Serial.
@@ -178,6 +180,14 @@ public:
      * @param minute Minute.
      */
     void setTime(uint8_t hour, uint8_t minute);
+    /** Render at most one animation frame; call frequently from loop(). */
+    void animate(uint32_t now);
+    void setAnimation(ClockAnimation::Effect effect) { _animator.setEffect(effect); }
+    void setBrightness(uint8_t brightness) {
+        _brightness = brightness;
+        Adafruit_NeoPixel::setBrightness(brightness);
+        _animator.requestRedraw();
+    }
     /**
      * @brief Clear internal frame buffer.
      */

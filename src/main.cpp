@@ -21,6 +21,7 @@ extern "C" {
 #include "mcal.h"
 #include "wordclock.h"
 #include "debounce.h"
+#include "recovery.h"
 #include "layouts/ilayout.h"
 #include "layouts/layout_de_11x10.h"
 
@@ -43,13 +44,6 @@ Logger logger;
 bool wifiConnected = false;
 
 #define WORDCLOCK_BRIGHNESS_LIMIT (127u)
-#define WORDCLOCK_USE_WIFI (true)
-// OTA settings
-#define WORDCLOCK_OTA_HOSTNAME "wordclock"
-// Leave empty to disable OTA password
-#define WORDCLOCK_OTA_PASSWORD ""
-// mDNS hostname
-#define WORDCLOCK_MDNS_HOSTNAME "wordclock"
 // Set offset time in seconds to adjust for your timezone, for example:
   // GMT +1 = 3600
   // GMT +8 = 28800
@@ -72,6 +66,7 @@ uint8_t gAmbientSampleCount = 0u;
 float gAmbientFilteredLux = 0.0f;
 uint8_t gEffectiveBrightness = WORDCLOCK_BRIGHNESS_LIMIT;
 bool gLittleFsMounted = false;
+ClockAnimation::Effect gAnimation = ClockAnimation::Effect::None;
 
 
 /**
@@ -228,8 +223,8 @@ static uint8_t getTargetBrightness() {
 static void applyClockAppearance() {
   gEffectiveBrightness = getTargetBrightness();
   wordclock->setBrightness(gEffectiveBrightness);
+  wordclock->setAnimation(gAnimation);
   wordclock->updateColor(gClockColor);
-  wordclock->show();
 }
 
 /**
@@ -248,7 +243,8 @@ static bool parseHexColor(const String& hexColor, uint32_t* outColor) {
   }
 
   char* end = nullptr;
-  const unsigned long value = strtoul(hexColor.substring(1).c_str(), &end, 16);
+  const String digits = hexColor.substring(1);
+  const unsigned long value = strtoul(digits.c_str(), &end, 16);
   if (end == nullptr || *end != '\0' || value > 0xFFFFFFul) {
     return false;
   }
@@ -289,6 +285,12 @@ static bool loadAppearanceFromFs() {
       uint32_t parsedColor = 0u;
       if (parseHexColor(line, &parsedColor)) {
         gClockColor = parsedColor;
+        loadedAny = true;
+      }
+    } else if (line.startsWith("animation=")) {
+      ClockAnimation::Effect parsed;
+      if (ClockAnimation::parseEffect(line.substring(10).c_str(), parsed)) {
+        gAnimation = parsed;
         loadedAny = true;
       }
     } else if (line.startsWith("brightness=")) {
@@ -358,6 +360,7 @@ static bool saveAppearanceToFs() {
 
   f.println(String("color=") + colorToHexString(gClockColor));
   f.println(String("brightness=") + String(gClockBrightness));
+  f.println(String("animation=") + ClockAnimation::effectId(gAnimation));
   f.println(String("auto_enabled=") + String(gAutoBrightnessEnabled ? 1 : 0));
   f.println(String("auto_lux_low=") + String(gAutoLuxLow, 2));
   f.println(String("auto_lux_high=") + String(gAutoLuxHigh, 2));
@@ -369,68 +372,26 @@ static bool saveAppearanceToFs() {
 }
 
 /**
- * @brief Connect to WiFi using stored credentials or start captive portal.
- * @return true if connected to WiFi, false if portal started.
- */
-static bool connectWifiWithPortal() {
-  WiFi.mode(WIFI_STA);
-  WiFi.persistent(true);
-  WiFi.setAutoConnect(true);
-  WiFi.setAutoReconnect(true);
-  WiFi.begin();
-
-  logger.info("WiFi connect: trying stored credentials");
-  const uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && (millis() - start) < 15000u) {
-    delay(250);
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    portalActive = false;
-    logger.info("WiFi connected: " + WiFi.localIP().toString());
-    return true;
-  }
-
-  // Start AP + captive portal if no stored credentials or connection failed
-  WiFi.mode(WIFI_AP);
-  WiFi.softAP("wordclock-setup");
-  dnsServer.start(53, "*", WiFi.softAPIP());
-  portalActive = true;
-  logger.warn("WiFi connect failed, started AP: wordclock-setup");
-  return false;
-}
-
-/**
- * @brief Initialize Arduino OTA.
- */
-static void setupOta() {
-  ArduinoOTA.setHostname(WORDCLOCK_OTA_HOSTNAME);
-  if (strlen(WORDCLOCK_OTA_PASSWORD) > 0) {
-    ArduinoOTA.setPassword(WORDCLOCK_OTA_PASSWORD);
-  }
-  ArduinoOTA.begin();
-  logger.info("OTA ready");
-}
-
-/**
- * @brief Initialize mDNS service.
- */
-static void setupMdns() {
-  if (!MDNS.begin(WORDCLOCK_MDNS_HOSTNAME)) {
-    logger.warn("mDNS start failed");
-    return;
-  }
-  MDNS.addService("http", "tcp", 80);
-  logger.info(String("mDNS: http://") + WORDCLOCK_MDNS_HOSTNAME + ".local");
-}
-
-/**
  * @brief Initialize async web server and routes.
  */
 static void setupWebServer() {
   if (!gLittleFsMounted) {
     logger.error("LittleFS not mounted, web files unavailable");
   }
+  server.on("/api/recovery/status", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send(200, "application/json", Recovery::statusJson());
+  });
+  server.on("/recovery", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->send_P(200, "text/html", Recovery::page());
+  });
+  server.on("/update", HTTP_GET, [](AsyncWebServerRequest* request) {
+    request->redirect("/recovery");
+  });
+  server.on("/api/recovery/enter", HTTP_POST, [](AsyncWebServerRequest* request) {
+    const bool ok = Recovery::enter();
+    request->send(ok ? 200 : 500, "text/plain",
+                  ok ? "Restarting in recovery. Reload /update in 20 seconds." : "RTC state write failed");
+  });
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* request) {
@@ -507,16 +468,34 @@ static void setupWebServer() {
                   ",\"effective_brightness\":" + String(gEffectiveBrightness) + "}");
   });
   server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest* request) {
+    String animationOptions = "[";
+    for (uint8_t i = 0; i < ClockAnimation::OptionCount; ++i) {
+      const auto& option = ClockAnimation::Options[i];
+      if (i != 0) animationOptions += ',';
+      animationOptions += String("{\"id\":\"") + option.id + "\",\"label\":\"" + option.label + "\"}";
+    }
+    animationOptions += ']';
     request->send(200, "application/json",
                   String("{\"auto_brightness_enabled\":") + String(gAutoBrightnessEnabled ? "true" : "false") +
                   ",\"auto_lux_low\":" + String(gAutoLuxLow, 2) +
                   ",\"auto_lux_high\":" + String(gAutoLuxHigh, 2) +
                   ",\"auto_brightness_min\":" + String(gAutoBrightnessMin) +
                   ",\"auto_brightness_max\":" + String(gAutoBrightnessMax) +
-                  ",\"ambient_filtered_lux\":" + String(gAmbientFilteredLux, 2) + "}");
+                  ",\"ambient_filtered_lux\":" + String(gAmbientFilteredLux, 2) +
+                  ",\"animation\":\"" + ClockAnimation::effectId(gAnimation) +
+                  "\",\"animation_options\":" + animationOptions + "}");
   });
   server.on("/api/settings", HTTP_POST, [](AsyncWebServerRequest* request) {
     bool changed = false;
+    ClockAnimation::Effect nextAnimation = gAnimation;
+    if (request->hasParam("animation", true)) {
+      const String value = request->getParam("animation", true)->value();
+      if (!ClockAnimation::parseEffect(value.c_str(), nextAnimation)) {
+        request->send(400, "application/json", "{\"error\":\"invalid animation\"}");
+        return;
+      }
+      changed = true;
+    }
 
     if (request->hasParam("auto_brightness_enabled", true)) {
       const String value = request->getParam("auto_brightness_enabled", true)->value();
@@ -581,6 +560,7 @@ static void setupWebServer() {
       return;
     }
 
+    gAnimation = nextAnimation;
     applyClockAppearance();
     if (!saveAppearanceToFs()) {
       request->send(500, "application/json", "{\"error\":\"save failed\"}");
@@ -640,9 +620,7 @@ static void Runnable_100ms() {
 static void Runnable_1000ms() {
   RtcDateTime dt = wordclock->getRTCDateTime();
   ws.cleanupClients();
-  wordclock->clear();
   wordclock->setTime(dt.Hour(), dt.Minute());
-  wordclock->show();
   logger.debug("Ambient median lux: " + String(gAmbientFilteredLux, 2));
   logger.debug("Wordclock time updated");
   sendTimeToWs(dt);
@@ -697,27 +675,34 @@ static uint32_t calculateTimeOffset(const RtcDateTime& dt) {
 void BootPinCbk()
 {
   Serial.println("-----Rebooting Wordclock-----");
-  wordclock->powerOff();
-  delay(100);
-  //ESP.reset();
-  ESP.rebootIntoUartDownloadMode();
+  Recovery::enter();
 }
 
 /**
  * @brief Arduino setup.
  */
+static void suspendApplicationForUpdate() {
+  digitalWrite(MCAL_LED_EN_PIN, LOW);
+  server.end();
+  ws.closeAll();
+  if (gLittleFsMounted) LittleFS.end();
+  gLittleFsMounted = false;
+}
+
 void setup() {
-  // Initialize GPIOs
+  pinMode(MCAL_LED_EN_PIN, OUTPUT);
+  digitalWrite(MCAL_LED_EN_PIN, LOW);
+  Serial.begin(115200);
+  Recovery::begin(suspendApplicationForUpdate);
+}
+
+static void startApplication() {
+  Recovery::applicationStarting();
   pinMode(MCAL_WIFI_EN_PIN, INPUT);
   pinMode(MCAL_BOOT_PIN, INPUT);
-  pinMode(MCAL_LED_EN_PIN, OUTPUT);
-  pinMode(MCAL_DAT_PIN,OUTPUT);
-  pinMode(MCAL_CLK_PIN,OUTPUT);
-  pinMode(MCAL_RST_PIN,OUTPUT);
-  digitalWrite(MCAL_LED_EN_PIN, LOW);
-
-  Serial.begin(115200);
-  delay(50);
+  pinMode(MCAL_DAT_PIN, OUTPUT);
+  pinMode(MCAL_CLK_PIN, OUTPUT);
+  pinMode(MCAL_RST_PIN, OUTPUT);
   gLittleFsMounted = LittleFS.begin();
   logger.begin(23);
   logger.setLevel(LOG_DEBUG);
@@ -734,12 +719,10 @@ void setup() {
 
   logResetCause();
 
-#if (WORDCLOCK_USE_WIFI == true)
-  wifiConnected = connectWifiWithPortal();
+  wifiConnected = WiFi.status() == WL_CONNECTED;
+  portalActive = !wifiConnected;
   setupWebServer();
   if (wifiConnected) {
-    setupOta();
-    setupMdns();
 
     // Initialize a NTPClient to get actual time
     timeClient.begin();
@@ -755,7 +738,6 @@ void setup() {
     dt.InitWithUnix32Time((uint32_t)(timeClient.getEpochTime()));
     wordclock->setRTCDateTime(dt);
   }
-#endif
 
   // Switch LED power on
   wordclock->powerOn();
@@ -768,20 +750,26 @@ void setup() {
   if (!loadAppearanceFromFs()) {
     saveAppearanceToFs();
   }
-  wordclock->show();
+  const RtcDateTime initialTime = wordclock->getRTCDateTime();
+  wordclock->setTime(initialTime.Hour(), initialTime.Minute());
+  wordclock->animate(millis());
 }
 
 /**
  * @brief Arduino main loop.
  */
 void loop() {
-  if (wifiConnected) {
-    ArduinoOTA.handle();
-    MDNS.update();
+  Recovery::handle();
+  if (!Recovery::applicationAllowed()) {
+    delay(1);
+    return;
   }
-  if (portalActive) {
-    dnsServer.processNextRequest();
+  static bool applicationStarted = false;
+  if (!applicationStarted) {
+    startApplication();
+    applicationStarted = true;
   }
+  Recovery::applicationHealthy();
 
   static uint32_t last100msMs = 0u;
   const uint32_t nowMs = millis();
@@ -796,4 +784,7 @@ void loop() {
     Runnable_1000ms();
   }
 
+  // Bounded to one LED frame per call (about 30 fps during a transition).
+  // OTA and network servicing above always get priority.
+  wordclock->animate(millis());
 }

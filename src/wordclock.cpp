@@ -101,24 +101,16 @@ void Wordclock::powerOn()
  */
 void Wordclock::setTime(uint8_t h, uint8_t m)
 {
-  uint8_t min = m % 10u;
-  uint8_t rows = _layout->getMatrixRows();
-  uint8_t cols = _layout->getMatrixCols();
-  uint8_t numleds = rows * cols;
+  if(_layout == nullptr) return;
+  const uint8_t min = m % 5u;
+  ClockAnimation::Frame frame;
   bool isFullHour = false;
 
-  //Set min pixels
-  if(min > 5u) min -= 5u;
-  switch (min)
-  {
-    case 4: setPixelColor(numleds+0u, _colorHSV);
-    case 3: setPixelColor(numleds+1u, _colorHSV);
-    case 2: setPixelColor(numleds+2u, _colorHSV);
-    case 1: setPixelColor(numleds+3u, _colorHSV);
-    default: break;
+  // Preserve the physical minute LED order (last LED lights first).
+  for (uint8_t i = 0; i < min; ++i) {
+    frame.minutes |= 1u << (3u - i);
   }
 
-  if(_layout == nullptr) return;
   // Update "matrix" depending on the loaded layout
   clearFrame();
   _layout->setMatrixTerm(Terms::ESIST);
@@ -263,8 +255,28 @@ void Wordclock::setTime(uint8_t h, uint8_t m)
     _layout->setMatrixTerm(Terms::UHR);
   }
 
-  //Get matrix and set correspondnding pixels
-  updateColor(_colorHSV);
+  for (uint8_t y = 0; y < ClockAnimation::Rows; ++y) {
+    for (uint8_t x = 0; x < ClockAnimation::Columns; ++x) {
+      if (_layout->getMatrixPixel(x, y)) frame.rows[y] |= uint16_t(1) << x;
+    }
+  }
+  _animator.setFrame(frame, millis());
+}
+
+void Wordclock::animate(uint32_t now)
+{
+  uint32_t pixels[ClockAnimation::PixelCount];
+  if (!_animator.render(now, pixels)) return;
+  for (uint8_t y = 0; y < ClockAnimation::Rows; ++y) {
+    for (uint8_t x = 0; x < ClockAnimation::Columns; ++x) {
+      setPixelColorXY(x, y, pixels[y * ClockAnimation::Columns + x]);
+    }
+  }
+  for (uint8_t i = 0; i < ClockAnimation::MinuteLeds; ++i) {
+    const uint16_t index = ClockAnimation::Rows * ClockAnimation::Columns + i;
+    setPixelColor(index, pixels[index]);
+  }
+  show();
 }
 
 /**
@@ -330,23 +342,8 @@ void Wordclock::setPixelColorXY(uint8_t x, uint8_t y, uint32_t c)
  */
 void Wordclock::updateColor(uint32_t color)
 {
-  // Update HSV color in case function was called from outside
   _colorHSV = color;
-
-  for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
-  {
-    for(uint8_t x=0u; x<_layout->getMatrixCols(); x++)
-    {
-      if(_layout->getMatrixPixel(x,y) == true)
-      {
-        setPixelColorXY(x, y, _colorHSV);
-      }
-      else
-      {
-        setPixelColorXY(x, y, 0u);
-      }
-    }
-  }
+  _animator.setColor(color);
 }
 
 /**
@@ -358,23 +355,7 @@ void Wordclock::updateColor(uint32_t color)
  */
 void Wordclock::updateColor(uint16_t h, uint8_t s, uint8_t v)
 {
-  // Apply gamma correction
-  _colorHSV = gamma32(ColorHSV(h, s, v));
-
-  for(uint8_t y=0u; y<_layout->getMatrixRows(); y++)
-  {
-    for(uint8_t x=0u; x<_layout->getMatrixCols(); x++)
-    {
-      if(_layout->getMatrixPixel(x,y) == true)
-      {
-        setPixelColorXY(x,y,_colorHSV);
-      }
-      else
-      {
-        setPixelColorXY(x,y,0u);
-      }
-    }
-  }
+  updateColor(gamma32(ColorHSV(h, s, v)));
 }
 
 /**
