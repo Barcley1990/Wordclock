@@ -83,7 +83,7 @@ void Animator::setColor(uint32_t color) {
 }
 
 uint32_t Animator::duration() const {
-    return effect_ == Effect::Matrix ? 1600u : 1200u;
+    return effect_ == Effect::Matrix ? 3200u : 1200u;
 }
 
 bool Animator::render(uint32_t now, uint32_t* pixels) {

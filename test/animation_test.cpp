@@ -86,12 +86,14 @@ int main() {
 
     auto matrix = prepare(Effect::Matrix, pixels);
     matrix.setFrame(newFrame(), 100);
-    assert(matrix.render(300, pixels));
+    assert(matrix.render(500, pixels));
     assert(pixels[2 * Columns + 2] != 0); // staggered column just starts
-    assert(matrix.render(400, pixels));
+    assert(matrix.render(700, pixels));
     assert(pixels[4 * Columns + 2] == 0x90ffb0); // falls downward
     assert(pixels[3 * Columns + 2] == 0x006419); // trailing green above
-    assert(matrix.render(1700, pixels) && !matrix.active());
+    assert(matrix.render(1700, pixels) && matrix.active()); // still active after old duration
+    assert(matrix.render(3267, pixels) && matrix.active());
+    assert(matrix.render(3300, pixels) && !matrix.active());
     expectFrame(pixels, newFrame()); // selected color returns
 
     // Every effect must render only in bounds, finish, and handle millis wrap.
@@ -99,14 +101,14 @@ int main() {
         const uint32_t start = UINT32_MAX - 500;
         auto a = prepare(Options[i].effect, pixels, start - 1);
         a.setFrame(newFrame(), start);
-        for (uint32_t elapsed = 0; elapsed <= 2000; ++elapsed) {
+        for (uint32_t elapsed = 0; elapsed <= 4000; ++elapsed) {
             a.render(start + elapsed, pixels);
         }
         assert(!a.active());
         expectFrame(pixels, newFrame());
-        assert(!a.render(start + 3000, pixels));
+        assert(!a.render(start + 5000, pixels));
         a.requestRedraw(); // brightness change regenerates original RGB values
-        assert(a.render(start + 3001, pixels));
+        assert(a.render(start + 5001, pixels));
         expectFrame(pixels, newFrame());
     }
 

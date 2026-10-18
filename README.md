@@ -245,7 +245,7 @@ settings files without this key keep the default `none`.
 | --- | --- |
 | `none` | Immediate update, as before |
 | `fadeout` | Fade the old time to black, then fade in the new time (1.2 s) |
-| `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (1.6 s) |
+| `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (3.2 s) |
 | `left-right` | Old time exits right, then new time enters from the left (1.2 s) |
 
 Transitions occur when the displayed minute changes, including the four minute
