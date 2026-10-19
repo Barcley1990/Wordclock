@@ -16,6 +16,71 @@ namespace {
 // eboot owns the first 128 bytes of RTC user memory during OTA. Offset is in
 // words: reserve our record at byte 256, outside the bootloader command.
 constexpr uint32_t RtcOffset = 64;
+constexpr uint32_t CrashRtcOffset = 72;
+constexpr uint32_t CrashMagic = 0x57434331;
+struct CrashRecord {
+    uint32_t magic;
+    uint32_t image;
+    uint32_t reason;
+    uint32_t cause;
+    uint32_t epc1;
+    uint32_t address;
+    uint32_t count;
+    uint32_t code[45];
+    uint32_t check;
+};
+static_assert(CrashRtcOffset * 4 >= RtcOffset * 4 + sizeof(RecoveryState::Record), "RTC records overlap");
+static_assert(CrashRtcOffset * 4 + sizeof(CrashRecord) <= 512, "Crash record exceeds RTC user memory");
+CrashRecord lastCrash{};
+uint32_t imageTag = 0;
+bool crashAvailable = false;
+
+uint32_t crashCheck(const CrashRecord& record) {
+    uint32_t hash = CrashMagic ^ record.image ^ record.reason ^ record.cause ^
+                    record.epc1 ^ record.address ^ record.count;
+    for (uint32_t value : record.code) hash = (hash ^ value) * 16777619u;
+    return hash;
+}
+
+void captureCrash(const rst_info* info, uint32_t stack, uint32_t end) {
+    // No allocations, filesystem or network operations in the panic callback.
+    lastCrash = {};
+    lastCrash.magic = CrashMagic;
+    lastCrash.image = imageTag;
+    if (info) {
+        lastCrash.reason = info->reason;
+        lastCrash.cause = info->exccause;
+        lastCrash.epc1 = info->epc1;
+        lastCrash.address = info->excvaddr;
+    }
+    if ((stack & 3u) == 0 && stack >= 0x3ffe8000u && end <= 0x40000000u && end > stack) {
+        if (end - stack > 8192u) end = stack + 8192u;
+        for (uint32_t pos = stack; pos + 4 <= end && lastCrash.count < 45; pos += 4) {
+            const uint32_t value = *reinterpret_cast<const uint32_t*>(pos);
+            if (value >= 0x40000000u && value < 0x40300000u) {
+                lastCrash.code[lastCrash.count++] = value;
+            }
+        }
+    }
+    lastCrash.check = crashCheck(lastCrash);
+    ESP.rtcUserMemoryWrite(CrashRtcOffset, reinterpret_cast<uint32_t*>(&lastCrash), sizeof(lastCrash));
+}
+
+String crashJson() {
+    if (!crashAvailable) return "null";
+    String result;
+    result.reserve(900);
+    result = String("{\"image\":\"0x") + String(lastCrash.image, HEX) +
+        "\",\"reason\":" + lastCrash.reason + ",\"cause\":" + lastCrash.cause +
+        ",\"epc1\":\"0x" + String(lastCrash.epc1, HEX) +
+        "\",\"address\":\"0x" + String(lastCrash.address, HEX) + "\",\"code\":[";
+    for (uint32_t i = 0; i < lastCrash.count; ++i) {
+        if (i) result += ',';
+        result += String("\"0x") + String(lastCrash.code[i], HEX) + '"';
+    }
+    return result + "]}";
+}
+
 constexpr uint32_t BootWindowMs = 10000;
 constexpr uint32_t HealthyAfterMs = 60000;
 ESP8266WebServer web(80);
@@ -76,9 +141,11 @@ const char* page() { return RecoveryPage; }
 
 String statusJson() {
     const char* mode = maintenance ? "recovery" : appStarted ? "normal" : "startup";
-    return String("{\"mode\":\"") + mode + "\",\"recovery_version\":2,\"reset_reason\":" + resetReason +
+    return String("{\"mode\":\"") + mode + "\",\"recovery_version\":3,\"reset_reason\":" + resetReason +
         ",\"reset_epc1\":\"0x" + String(bootResetInfo.epc1, HEX) +
         "\",\"reset_exccause\":" + bootResetInfo.exccause +
+        ",\"reset_excvaddr\":\"0x" + String(bootResetInfo.excvaddr, HEX) +
+        "\",\"last_crash\":" + crashJson() +
         ",\"free_heap\":" + ESP.getFreeHeap() +
         ",\"max_free_block\":" + ESP.getMaxFreeBlockSize() +
         ",\"application_healthy\":" + (healthy ? "true" : "false") +
@@ -99,6 +166,8 @@ bool enter() {
 
 void begin(void (*suspendApplication)()) {
     suspendApp = suspendApplication;
+    crashAvailable = ESP.rtcUserMemoryRead(CrashRtcOffset, reinterpret_cast<uint32_t*>(&lastCrash), sizeof(lastCrash)) &&
+        lastCrash.magic == CrashMagic && lastCrash.count <= 45 && lastCrash.check == crashCheck(lastCrash);
     const rst_info* info = ESP.getResetInfoPtr();
     if (info) bootResetInfo = *info;
     resetReason = info ? info->reason : REASON_DEFAULT_RST;
@@ -125,6 +194,7 @@ void begin(void (*suspendApplication)()) {
     disconnectedAt = millis();
     // Cache this flash scan before any async HTTP callbacks can request status.
     sketchMd5 = ESP.getSketchMD5();
+    imageTag = strtoul(sketchMd5.substring(0, 8).c_str(), nullptr, 16);
 
     // One shared Update object serves ArduinoOTA and the core HTTP updater.
     // Every attempt latches recovery, even if the transfer is interrupted.
@@ -202,3 +272,7 @@ void applicationHealthy() {
     }
 }
 } // namespace Recovery
+
+extern "C" void custom_crash_callback(rst_info* info, uint32_t stack, uint32_t end) {
+    Recovery::captureCrash(info, stack, end);
+}

@@ -57,7 +57,7 @@ Pin mapping (from `include/mcal.h`):
 - `Adafruit NeoPixel`
 - `BH1750`
 - `ESP32Async/ESPAsyncTCP` 2.0.0
-- `me-no-dev/ESPAsyncWebServer` 3.6.0
+- `ESP32Async/ESPAsyncWebServer` 3.12.1
 - `ESP8266HTTPUpdateServer` (from ESP8266 core, recovery only)
 - `ArduinoOTA` (from ESP8266 core)
 
@@ -110,7 +110,7 @@ Use the same ARM64 environment in the upload commands below when building on
 Apple Silicon. `--disable-auto-clean` retains the firmware output when switching
 to the filesystem target; it does not skip dependency checks.
 
-Build and deployment on 2026-10-18 (Apple Silicon, GCC 10.3):
+Initial recovery deployment on 2026-10-18 (Apple Silicon, GCC 10.3):
 
 - Firmware build: successful; 454,189 bytes flash sections, 36,536 bytes RAM (44.6%).
 - Upload image: 458,336 bytes; MD5 `6a993503fc0817e393a2b3463f9a6713`.
@@ -150,6 +150,57 @@ five-minute load test does not establish long-term stability; if recovery
 recurs, save `/api/recovery/status` before resuming the application so the
 original reset details are preserved.
 
+Follow-up on 2026-10-19: the 3.2-second Matrix build was committed as
+`b597337` and uploaded, but another web request triggered an allocator
+exception (`umm_malloc_core`). A diagnostic build subsequently hit a hardware
+watchdog while HTTP traffic and WebSocket connection changes were running.
+Recovery stayed reachable after both failures. The earlier dependency-pair
+correction alone therefore did not resolve the problem.
+
+The current firmware pins `ESP32Async/ESPAsyncWebServer` 3.12.1, which includes
+upstream fixes for HTTP request lifetime and WebSocket frame/connection handling
+([HTTP fix](https://github.com/ESP32Async/ESPAsyncWebServer/pull/465),
+[WebSocket fix](https://github.com/ESP32Async/ESPAsyncWebServer/pull/462)).
+That upgrade alone also failed the split-frame test. The RTC crash record
+identified `AsyncWebSocketClient::_onData` → `_queueControl` → `makeSharedBuffer`
+→ the allocator. Source inspection found that a one-byte TCP fragment was
+treated as a two-byte WebSocket header: the remaining byte count underflowed,
+and mask/payload processing could read and overwrite adjacent memory.
+Incomplete extended lengths and split control payloads were also unsafe.
+
+`scripts/patch_async_websocket.py` applies the checked-in patch to exactly
+3.12.1 before compilation. It verifies original/patched SHA-256 hashes and
+refuses unexpected library sources. The build hook requires Git on `PATH`.
+The fixed parser retains up to 14 header
+bytes and 125 control-payload bytes per connection, waits for complete headers,
+and bounds close-reason text by the frame length instead of `strlen()`.
+The standalone header reader is in `patches/WebSocketFrameHeader.h`; host tests
+exercise every header split, bytewise input, extended lengths and control-frame
+validation. The normal web server also starts after hardware/settings initialization.
+
+- Current firmware image: 454,896 bytes, MD5 `5c2173f92759bc3933c52b8ee38bbe1d`.
+- RAM: 36,084 bytes (44.0%); flash sections: 450,737 bytes.
+- Device OTA staging space: 1,114,112 bytes, leaving 640 KiB after sector-rounded
+  staging of another image of the same size.
+- Installed through the embedded recovery HTTP updater; firmware MD5 checked
+  on-device before restarting the application. LittleFS was retained.
+- Firmware/ELF and deployment/test logs: `.pio/backups/wordclock-ws-header-fix/`.
+  The reproducer and decoded earlier crash are under
+  `.pio/backups/wordclock-webserver-fix/`.
+- Patched device test: passed over approximately seven minutes, with 360 seconds
+  of HTTP load, 3,224 counted HTTP requests, 100 aborted downloads and 240
+  WebSocket connections (including bytewise headers, extended lengths, split
+  ping/close payloads and non-NUL-terminated close reasons). No reboot or corrupt
+  web asset response; original appearance retained; final free heap 32,712 bytes.
+  A separate 40-connection preflight also passed the former immediate reproducer.
+- ArduinoOTA from normal mode with an open WebSocket also succeeded. The device
+  rebooted into recovery with the expected MD5 and the embedded `/update` form
+  reachable, then the clock application was resumed.
+- The 3.2-second Matrix effect was selected temporarily for 75 seconds after
+  that update. All 75 received clock messages were valid, spanning real minute
+  changes without reboot; application health was confirmed. The original
+  Left-right selection and identical persisted appearance file were restored.
+
 ### 2. Build and upload filesystem image
 
 ```bash
@@ -187,6 +238,14 @@ firmware without a recovery record also stays in recovery.
 - The status endpoint reports mode, reset reason/EPC/exception cause, free heap,
   largest free block, application health, firmware MD5, sketch size, available
   OTA staging space, configured/physical flash size and WiFi address.
+- Recovery version 3 also reports `reset_excvaddr` and `last_crash`. On a software
+  exception/panic, a bounded RTC record saves the cause, address and candidate
+  code addresses from the stack without allocating memory or writing flash.
+  `last_crash.image` identifies the first eight MD5 digits of the crashing image;
+  decode its addresses with that image's saved ELF, not a later build. The record
+  persists through software restarts and occupies RTC user-memory bytes 288–499,
+  separate from the recovery marker and eboot. A hardware-watchdog reset may
+  bypass the crash callback, and power loss can erase RTC diagnostics.
 - If stored WiFi fails, join **wordclock-recovery** and open **192.168.4.1**.
   The fallback AP runs alongside station mode and also supports both updaters.
 - Holding the boot button for approximately five seconds now requests recovery;
@@ -345,6 +404,9 @@ clang++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined \
   -Iinclude src/clock_animation.cpp test/animation_test.cpp \
   -o /tmp/wordclock-animation-test
 /tmp/wordclock-animation-test
+clang++ -std=c++11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+  -Ipatches test/websocket_header_test.cpp -o /tmp/wordclock-websocket-header-test
+/tmp/wordclock-websocket-header-test
 node test/settings_test.mjs
 ```
 
@@ -352,3 +414,18 @@ These cover effect timing/direction, minute LEDs, default/boot behavior, frame
 rate limiting, unchanged RTC polls, interrupted transitions, color changes,
 `millis()` rollover, dropdown loading/saving and API error handling. They do not
 replace a successful ESP8266 build or an OTA test on the device.
+
+For a running device, the read-only hardware check exercises parallel page
+loads, 100 deliberately aborted downloads and 240 WebSocket connections with
+normal, split-frame and abrupt closes. It checks firmware MD5, monotonically
+increasing uptime, full web asset contents and retained appearance settings:
+
+```bash
+python3 scripts/check_device_stability.py --host 192.168.178.62 \
+  --md5 5c2173f92759bc3933c52b8ee38bbe1d --seconds 360 \
+  --log /tmp/wordclock-stability.jsonl
+```
+
+Run this against the expected firmware in normal mode. It does not flash,
+resume recovery or alter settings. On failure it tries to save the reset status
+before another reboot can replace that evidence.

@@ -721,7 +721,6 @@ static void startApplication() {
 
   wifiConnected = WiFi.status() == WL_CONNECTED;
   portalActive = !wifiConnected;
-  setupWebServer();
   if (wifiConnected) {
 
     // Initialize a NTPClient to get actual time
@@ -753,6 +752,8 @@ static void startApplication() {
   const RtcDateTime initialTime = wordclock->getRTCDateTime();
   wordclock->setTime(initialTime.Hour(), initialTime.Minute());
   wordclock->animate(millis());
+  // Publish routes only once hardware, settings and the initial frame are ready.
+  setupWebServer();
 }
 
 /**

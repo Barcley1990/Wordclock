@@ -1,0 +1,178 @@
+--- a/src/AsyncWebSocket.h
++++ b/src/AsyncWebSocket.h
+@@ -155,6 +155,8 @@
+   }
+ };
+
++#include "WebSocketFrameHeader.h"
++
+ class AsyncWebSocketClient {
+ private:
+   AsyncClient *_client;
+@@ -162,6 +164,8 @@
+   uint32_t _clientId;
+   AwsClientStatus _status;
+   uint8_t _pstate;
++  WordclockWebSocket::FrameHeader _frameHeader;
++  uint8_t _controlPayload[125]{};
+   uint32_t _lastMessageTime;
+   uint32_t _keepAlivePeriod;
+   mutable asyncsrv::mutex_type _queue_lock;
+--- a/src/AsyncWebSocket.cpp
++++ b/src/AsyncWebSocket.cpp
+@@ -516,80 +516,39 @@
+     );
+
+     if (_pstate == STATE_FRAME_START) {
+-      const uint8_t *fdata = data;
+-
++      // WORDCLOCK_WS_FRAME_PATCH_V1: TCP may split any byte of the frame header.
++      if (!_frameHeader.consume(data, plen)) {
++        return;
++      }
++      if (!_frameHeader.validClientFrame()) {
++        _status = WS_DISCONNECTED;
++        if (_client) {
++          _client->abort();
++        }
++        return;
++      }
+       _pinfo.index = 0;
+-      _pinfo.final = (fdata[0] & 0x80) != 0;
+-      _pinfo.opcode = fdata[0] & 0x0F;
+-      _pinfo.masked = ((fdata[1] & 0x80) != 0) ? 1 : 0;
+-      _pinfo.len = fdata[1] & 0x7F;
+-
+-      data += 2;
+-      plen -= 2;
+-
+-      if (_pinfo.len == 126 && plen >= 2) {
+-        _pinfo.len = fdata[3] | (uint16_t)(fdata[2]) << 8;
+-        data += 2;
+-        plen -= 2;
+-
+-      } else if (_pinfo.len == 127 && plen >= 8) {
+-        _pinfo.len = fdata[9] | (uint16_t)(fdata[8]) << 8 | (uint32_t)(fdata[7]) << 16 | (uint32_t)(fdata[6]) << 24 | (uint64_t)(fdata[5]) << 32
+-                     | (uint64_t)(fdata[4]) << 40 | (uint64_t)(fdata[3]) << 48 | (uint64_t)(fdata[2]) << 56;
+-        data += 8;
+-        plen -= 8;
+-      }
+-    }
+-
+-    async_ws_log_v(
+-      "[%s][%" PRIu32 "] DATA _pinfo: index: %" PRIu64 ", final: %" PRIu8 ", opcode: %" PRIu8 ", masked: %" PRIu8 ", len: %" PRIu64, _server->url(), _clientId,
+-      _pinfo.index, _pinfo.final, _pinfo.opcode, _pinfo.masked, _pinfo.len
+-    );
+-
+-    // Handle fragmented mask data - Safari may split the 4-byte mask across multiple packets
+-    // _pinfo.masked is 1 if we need to start reading mask bytes
+-    // _pinfo.masked is 2, 3, or 4 if we have partially read the mask
+-    // _pinfo.masked is 5 if the mask is complete
+-    while (_pinfo.masked && _pstate <= STATE_FRAME_MASK && _pinfo.masked < 5) {
+-      // check if we have some data
+-      if (plen == 0) {
+-        // Safari close frame edge case: masked bit set but no mask data
+-        if (_pinfo.opcode == WS_DISCONNECT) {
+-          async_ws_log_v("[%s][%" PRIu32 "] DATA close frame with incomplete mask, treating as unmasked", _server->url(), _clientId);
+-          _pinfo.masked = 0;
+-          _pinfo.index = 0;
+-          _pinfo.len = 0;
+-          _pstate = STATE_FRAME_START;
+-          break;
+-        }
+-
+-        // wait for more data
+-        _pstate = STATE_FRAME_MASK;
+-        async_ws_log_v("[%s][%" PRIu32 "] DATA waiting for more mask data: read: %" PRIu8 "/4", _server->url(), _clientId, _pinfo.masked - 1);
+-        return;
+-      }
+-
+-      // accumulate mask bytes
+-      _pinfo.mask[_pinfo.masked - 1] = data[0];
+-      data += 1;
+-      plen -= 1;
+-      _pinfo.masked++;
+-    }
+-
+-    // all mask bytes read if we were reading them
+-    _pstate = STATE_FRAME_DATA;
+-
+-    // restore masked to 1 for backward compatibility
+-    if (_pinfo.masked >= 5) {
+-      async_ws_log_v("[%s][%" PRIu32 "] DATA mask read complete", _server->url(), _clientId);
+-      _pinfo.masked = 1;
+-    }
+-
+-    const size_t datalen = std::min((size_t)(_pinfo.len - _pinfo.index), plen);
++      _pinfo.final = _frameHeader.final();
++      _pinfo.opcode = _frameHeader.opcode();
++      _pinfo.masked = _frameHeader.masked();
++      _pinfo.len = _frameHeader.length();
++      memcpy(_pinfo.mask, _frameHeader.mask(), 4);
++      _frameHeader.reset();
++      _pstate = STATE_FRAME_DATA;
++    }
++
++    const size_t datalen = static_cast<size_t>(std::min<uint64_t>(_pinfo.len - _pinfo.index, plen));
+
+     if (_pinfo.masked) {
+       for (size_t i = 0; i < datalen; i++) {
+         data[i] ^= _pinfo.mask[(_pinfo.index + i) % 4];
+       }
++    }
++
++    // Control frames must be reassembled before interpreting their payload.
++    // Header validation limits them to the fixed 125-byte buffer.
++    if (_pinfo.opcode >= WS_DISCONNECT && datalen) {
++      memcpy(_controlPayload + static_cast<size_t>(_pinfo.index), data, datalen);
+     }
+
+     if (_pinfo.index == 0) {  // first fragment of the frame
+@@ -607,7 +566,7 @@
+     if ((datalen + _pinfo.index) < _pinfo.len) {  // more fragments to read for this frame
+       _pstate = STATE_FRAME_DATA;
+
+-      if (datalen > 0) {
++      if (datalen > 0 && _pinfo.opcode < WS_DISCONNECT) {
+         async_ws_log_v(
+           "[%s][%" PRIu32 "] DATA processing next fragment of %s frame %" PRIu32 ", index: %" PRIu64 ", len: %" PRIu32 "", _server->url(), _clientId,
+           (_pinfo.message_opcode == WS_TEXT) ? "text" : "binary", _pinfo.num, _pinfo.index, (uint32_t)datalen
+@@ -626,11 +585,11 @@
+       if (_pinfo.opcode == WS_DISCONNECT) {
+         async_ws_log_v("[%s][%" PRIu32 "] DATA WS_DISCONNECT", _server->url(), _clientId);
+
+-        if (datalen) {
+-          uint16_t reasonCode = (uint16_t)(data[0] << 8) + data[1];
+-          char *reasonString = (char *)(data + 2);
++        if (_pinfo.len >= 2) {
++          uint16_t reasonCode = (uint16_t)(_controlPayload[0] << 8) + _controlPayload[1];
++          uint8_t *reasonString = _controlPayload + 2;
+           if (reasonCode > 1001) {
+-            _server->_handleEvent(this, WS_EVT_ERROR, (void *)&reasonCode, (uint8_t *)reasonString, strlen(reasonString));
++            _server->_handleEvent(this, WS_EVT_ERROR, (void *)&reasonCode, reasonString, static_cast<size_t>(_pinfo.len - 2));
+           }
+         }
+         if (_status == WS_DISCONNECTING) {
+@@ -644,18 +603,18 @@
+           if (_client) {
+             _client->ackLater();
+           }
+-          _queueControl(WS_DISCONNECT, data, datalen);
++          _queueControl(WS_DISCONNECT, _controlPayload, static_cast<size_t>(_pinfo.len));
+         }
+
+       } else if (_pinfo.opcode == WS_PING) {
+         async_ws_log_v("[%s][%" PRIu32 "] DATA PING", _server->url(), _clientId);
+         _server->_handleEvent(this, WS_EVT_PING, NULL, NULL, 0);
+-        _queueControl(WS_PONG, data, datalen);
++        _queueControl(WS_PONG, _controlPayload, static_cast<size_t>(_pinfo.len));
+
+       } else if (_pinfo.opcode == WS_PONG) {
+         async_ws_log_v("[%s][%" PRIu32 "] DATA PONG", _server->url(), _clientId);
+-        if (datalen != AWSC_PING_PAYLOAD_LEN || memcmp(AWSC_PING_PAYLOAD, data, AWSC_PING_PAYLOAD_LEN) != 0) {
+-          _server->_handleEvent(this, WS_EVT_PONG, NULL, data, datalen);
++        if (_pinfo.len != AWSC_PING_PAYLOAD_LEN || memcmp(AWSC_PING_PAYLOAD, _controlPayload, AWSC_PING_PAYLOAD_LEN) != 0) {
++          _server->_handleEvent(this, WS_EVT_PONG, NULL, _controlPayload, static_cast<size_t>(_pinfo.len));
+         }
+
+       } else if (_pinfo.opcode < WS_DISCONNECT) {  // continuation or text/binary frame
