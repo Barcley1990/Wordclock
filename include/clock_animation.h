@@ -28,6 +28,7 @@ struct Frame {
     uint8_t minutes = 0;
 
     bool pixel(int x, int y) const;
+    bool sameTextAs(const Frame& other) const;
     bool operator==(const Frame& other) const;
 };
 

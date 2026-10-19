@@ -307,10 +307,12 @@ settings files without this key keep the default `none`.
 | `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (3.2 s) |
 | `left-right` | Old time exits right, then new time enters from the left (1.2 s) |
 
-Transitions occur when the displayed minute changes, including the four minute
-LEDs. Boot shows the current time immediately. The minute LEDs fade during
-transitions. Changing the effect during a transition immediately shows the new
-time; the selected effect starts on the next time change. Manual and automatic
+Transitions occur only when the displayed word text changes, normally every
+five minutes. The four minute LEDs update immediately between text changes,
+without starting an animation. Boot shows the current time immediately. The
+minute LEDs fade during text transitions. Changing the effect during a transition
+immediately shows the new time; the selected effect starts on the next text
+change. Manual and automatic
 brightness still apply to every frame.
 
 `ClockAnimation::Animator` is a hardware-independent renderer for the current

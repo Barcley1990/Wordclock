@@ -1,6 +1,7 @@
 #include "clock_animation.h"
 
 #include <assert.h>
+#include <initializer_list>
 #include <stdio.h>
 
 using namespace ClockAnimation;
@@ -122,14 +123,50 @@ int main() {
     Frame minute = oldFrame();
     minute.minutes = 12;
     minuteOnly.setFrame(minute, 100);
-    assert(minuteOnly.active());
+    assert(!minuteOnly.active() && minuteOnly.render(100, pixels));
+    expectFrame(pixels, minute);
     minuteOnly.setFrame(newFrame(), 200); // time jump replaces destination
+    assert(minuteOnly.active());
     assert(minuteOnly.render(1400, pixels) && !minuteOnly.active());
     expectFrame(pixels, newFrame());
     minuteOnly.setColor(0x123456);
     assert(minuteOnly.render(1401, pixels));
     assert(pixels[7 * Columns + 8] == 0x123456);
     assert(pixels[Rows * Columns + 3] == 0x123456);
+
+    // All effects leave the words still while the four minute dots advance.
+    for (uint8_t i = 0; i < OptionCount; ++i) {
+        auto a = prepare(Options[i].effect, pixels);
+        Frame current = oldFrame();
+        uint32_t now = 60000;
+        for (uint8_t dots : {12, 14, 15, 0}) {
+            current.minutes = dots;
+            a.setFrame(current, now);
+            assert(!a.active() && a.render(now, pixels));
+            expectFrame(pixels, current);
+            a.setFrame(current, now + 1000);
+            assert(!a.render(now + 1000, pixels));
+            now += 60000;
+        }
+        // A text change animates even when the minute dots remain identical.
+        Frame changed = newFrame();
+        changed.minutes = current.minutes;
+        a.setFrame(changed, now);
+        assert(a.active() == (Options[i].effect != Effect::None));
+        assert(a.render(now + 4000, pixels) && !a.active());
+        expectFrame(pixels, changed);
+    }
+
+    // A dot update during an existing word transition preserves its deadline.
+    auto ongoing = prepare(Effect::Matrix, pixels);
+    ongoing.setFrame(newFrame(), 100);
+    assert(ongoing.render(500, pixels) && ongoing.active());
+    Frame newDots = newFrame();
+    newDots.minutes = 1;
+    ongoing.setFrame(newDots, 1000);
+    assert(ongoing.active());
+    assert(ongoing.render(3300, pixels) && !ongoing.active());
+    expectFrame(pixels, newDots);
 
     puts("Animation tests passed");
 }

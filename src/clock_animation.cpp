@@ -36,7 +36,10 @@ bool Frame::pixel(int x, int y) const {
 }
 
 bool Frame::operator==(const Frame& other) const {
-    if (minutes != other.minutes) return false;
+    return minutes == other.minutes && sameTextAs(other);
+}
+
+bool Frame::sameTextAs(const Frame& other) const {
     for (uint8_t y = 0; y < Rows; ++y) {
         if (rows[y] != other.rows[y]) return false;
     }
@@ -61,6 +64,13 @@ static void draw(const Frame& frame, uint32_t color, uint32_t* pixels,
 
 void Animator::setFrame(const Frame& frame, uint32_t now) {
     if (initialized_ && frame == target_) return;
+    if (initialized_ && frame.sameTextAs(target_)) {
+        // Minute dots update without starting or restarting a text transition.
+        target_.minutes = frame.minutes;
+        previous_.minutes = frame.minutes;
+        dirty_ = true;
+        return;
+    }
     previous_ = target_;
     target_ = frame;
     active_ = initialized_ && effect_ != Effect::None;
