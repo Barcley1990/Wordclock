@@ -305,7 +305,7 @@ settings files without this key keep the default `none`.
 | `none` | Immediate update, as before |
 | `fadeout` | Fade the old time to black, then fade in the new time (1.2 s) |
 | `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (3.2 s) |
-| `left-right` | Old time exits right, then new time enters from the left (1.2 s) |
+| `left-right` | Occupied text rows alternate directions from top to bottom; empty rows do not count. The first occupied row moves left to right, the second right to left, the third left to right, etc. Old text slides out, then new text slides in from the opposite edge; directions are determined separately for each text (1.2 s) |
 
 Transitions occur only when the displayed word text changes, normally every
 five minutes. The four minute LEDs update immediately between text changes,

@@ -77,13 +77,71 @@ int main() {
     assert(fade.render(1300, pixels) && !fade.active());
     expectFrame(pixels, newFrame());
 
-    auto slide = prepare(Effect::LeftRight, pixels);
-    slide.setFrame(newFrame(), 100);
+    Frame slideOld, slideNew;
+    slideOld.minutes = 8;
+    slideNew.minutes = 12;
+    for (uint8_t y = 0; y < Rows; ++y) {
+        slideOld.rows[y] = 1u << ((y & 1u) ? 8 : 2);
+        slideNew.rows[y] = 1u << ((y & 1u) ? 2 : 8);
+    }
+    Animator slide;
+    slide.setColor(Color);
+    slide.setEffect(Effect::LeftRight);
+    slide.setFrame(slideOld, 0);
+    assert(slide.render(0, pixels) && !slide.active());
+    expectFrame(pixels, slideOld);
+    slide.setFrame(slideNew, 100);
     assert(slide.render(400, pixels));
-    assert(pixels[2 * Columns + 7] == Color); // old x=2 moves right by 5
-    assert(pixels[2 * Columns + 2] == 0);
+    for (uint8_t y = 0; y < Rows; ++y) {
+        for (uint8_t x = 0; x < Columns; ++x) {
+            const uint8_t expectedX = (y & 1u) ? 3 : 7;
+            assert(pixels[y * Columns + x] == (x == expectedX ? Color : 0));
+        }
+    }
+    assert(slide.render(650, pixels));
+    for (uint16_t i = 0; i < Rows * Columns; ++i) assert(pixels[i] == 0); // clip, never wrap
+    assert(slide.render(700, pixels));
+    for (auto pixel : pixels) assert(pixel == 0);
     assert(slide.render(1000, pixels));
-    assert(pixels[7 * Columns + 2] == Color); // new x=8 enters at x=2
+    for (uint8_t y = 0; y < Rows; ++y) {
+        for (uint8_t x = 0; x < Columns; ++x) {
+            const uint8_t expectedX = (y & 1u) ? 8 : 2;
+            assert(pixels[y * Columns + x] == (x == expectedX ? Color : 0));
+        }
+    }
+    assert(slide.render(1300, pixels) && !slide.active());
+    expectFrame(pixels, slideNew);
+
+    // Only occupied rows count: physical rows 1, 2, 4 exit right, left, right.
+    Frame sparseOld, sparseNew;
+    sparseOld.rows[0] = 1u << 2;
+    sparseOld.rows[1] = 1u << 8;
+    sparseOld.rows[3] = 1u << 2;
+    // Incoming text has different occupied rows and starts below an empty row.
+    sparseNew.rows[1] = 1u << 8;
+    sparseNew.rows[4] = 1u << 2;
+    sparseNew.rows[8] = 1u << 8;
+    Animator sparseSlide;
+    sparseSlide.setColor(Color);
+    sparseSlide.setEffect(Effect::LeftRight);
+    sparseSlide.setFrame(sparseOld, 0);
+    assert(sparseSlide.render(0, pixels) && !sparseSlide.active());
+    expectFrame(pixels, sparseOld);
+    sparseSlide.setFrame(sparseNew, 100);
+    assert(sparseSlide.render(400, pixels));
+    Frame sparseExpected;
+    sparseExpected.rows[0] = 1u << 7;
+    sparseExpected.rows[1] = 1u << 3;
+    sparseExpected.rows[3] = 1u << 7;
+    expectFrame(pixels, sparseExpected);
+    assert(sparseSlide.render(1000, pixels));
+    sparseExpected = Frame{};
+    sparseExpected.rows[1] = 1u << 2;
+    sparseExpected.rows[4] = 1u << 8;
+    sparseExpected.rows[8] = 1u << 2;
+    expectFrame(pixels, sparseExpected);
+    assert(sparseSlide.render(1300, pixels) && !sparseSlide.active());
+    expectFrame(pixels, sparseNew);
 
     auto matrix = prepare(Effect::Matrix, pixels);
     matrix.setFrame(newFrame(), 100);

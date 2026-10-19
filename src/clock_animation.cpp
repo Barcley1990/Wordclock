@@ -54,11 +54,14 @@ static uint32_t dim(uint32_t color, uint8_t level) {
 }
 
 static void draw(const Frame& frame, uint32_t color, uint32_t* pixels,
-                 int offsetX = 0) {
+                 int alternatingOffsetX = 0) {
+    uint8_t occupiedRow = 0;
     for (uint8_t y = 0; y < Rows; ++y) {
+        const int offsetX = (occupiedRow & 1u) ? -alternatingOffsetX : alternatingOffsetX;
         for (uint8_t x = 0; x < Columns; ++x) {
             pixels[y * Columns + x] = frame.pixel(x - offsetX, y) ? color : 0;
         }
+        if (frame.rows[y] != 0) ++occupiedRow;
     }
 }
 
@@ -125,7 +128,7 @@ bool Animator::render(uint32_t now, uint32_t* pixels) {
             draw(frame, minuteColor, pixels);
             break;
         case Effect::LeftRight: {
-            // Old time exits right, then new time enters from the left.
+            // Alternate occupied rows only; empty rows do not change direction.
             const int distance = phase * Columns / half;
             draw(frame, color_, pixels, entering ? distance - Columns : distance);
             break;
