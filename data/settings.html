@@ -22,7 +22,12 @@
             <option value="none">None (default)</option>
           </select>
         </label>
-        <p class="hint">Plays only when the displayed words change (every five minutes). Minute dots update immediately. Matrix uses green falling trails, then returns to your clock color.</p>
+        <p class="hint">Plays when the displayed words change (every five minutes). Noise starts with one second of dim random blinking, changing every 50 ms at 60% brightness (40% reduction). Then a random time letter stays lit at full brightness every 200 ms until the full text is visible. The noise gets sparser and fades out over 200 ms at the end. Random picks an effect for each text change or test. Minute dots update immediately between text changes.</p>
+        <label>
+          <input id="animation-test" type="checkbox" role="switch" disabled />
+          Test
+        </label>
+        <p class="hint">When enabled, selecting an animation plays it once immediately on the clock. Save Animation keeps your choice for future time changes.</p>
         <button id="animation-save" type="submit" disabled>Save Animation</button>
       </form>
       <div class="status" id="animation-status" role="status">Loading animation...</div>

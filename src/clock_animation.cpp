@@ -9,6 +9,8 @@ const Option Options[] = {
     {Effect::Fadeout, "fadeout", "Fadeout"},
     {Effect::Matrix, "matrix", "Matrix"},
     {Effect::LeftRight, "left-right", "Left-right"},
+    {Effect::Noise, "noise", "Noise"},
+    {Effect::Random, "random", "Random"},
 };
 const uint8_t OptionCount = sizeof(Options) / sizeof(Options[0]);
 
@@ -77,8 +79,10 @@ void Animator::setFrame(const Frame& frame, uint32_t now) {
     previous_ = target_;
     target_ = frame;
     active_ = initialized_ && effect_ != Effect::None;
+    playingEffect_ = resolveEffect(effect_, now);
     initialized_ = true;
     startedAt_ = now;
+    prepareNoise(now);
     dirty_ = true;
 }
 
@@ -95,8 +99,66 @@ void Animator::setColor(uint32_t color) {
     dirty_ = true;
 }
 
+void Animator::preview(Effect effect, uint32_t now) {
+    if (!initialized_) return;
+    previous_ = target_;
+    playingEffect_ = resolveEffect(effect, now);
+    startedAt_ = now;
+    prepareNoise(now);
+    active_ = effect != Effect::None;
+    dirty_ = true;
+}
+
+static uint32_t nextRandom(uint32_t& state) {
+    state ^= state << 13;
+    state ^= state >> 17;
+    state ^= state << 5;
+    return state;
+}
+
+Effect Animator::resolveEffect(Effect effect, uint32_t now) {
+    if (effect != Effect::Random) return effect;
+    uint8_t count = 0;
+    for (const auto& option : Options) {
+        if (option.effect != Effect::None && option.effect != Effect::Random) ++count;
+    }
+    randomState_ ^= now;
+    if (!randomState_) randomState_ = 1;
+    uint8_t selected = nextRandom(randomState_) % count;
+    for (const auto& option : Options) {
+        if (option.effect == Effect::None || option.effect == Effect::Random) continue;
+        if (selected-- == 0) return option.effect;
+    }
+    return Effect::None;
+}
+
+void Animator::prepareNoise(uint32_t now) {
+    if (playingEffect_ != Effect::Noise) return;
+    noiseState_ = now | 1u;
+    uint32_t state = noiseState_;
+    uint8_t letters[Rows * Columns];
+    noiseLetterCount_ = 0;
+    memset(noiseRanks_, 255, sizeof(noiseRanks_));
+    for (uint8_t i = 0; i < Rows * Columns; ++i) {
+        if (target_.pixel(i % Columns, i / Columns)) letters[noiseLetterCount_++] = i;
+    }
+    // Shuffle once per transition: settled letters keep their random reveal order.
+    for (uint8_t remaining = noiseLetterCount_; remaining > 1; --remaining) {
+        const uint8_t selected = nextRandom(state) % remaining;
+        const uint8_t tmp = letters[remaining - 1];
+        letters[remaining - 1] = letters[selected];
+        letters[selected] = tmp;
+    }
+    for (uint8_t rank = 0; rank < noiseLetterCount_; ++rank) {
+        noiseRanks_[letters[rank]] = rank;
+    }
+}
+
 uint32_t Animator::duration() const {
-    return effect_ == Effect::Matrix ? 3200u : 1200u;
+    if (playingEffect_ == Effect::Noise) {
+        return 1000u + (noiseLetterCount_ ? (noiseLetterCount_ - 1u) * 200u : 0u) + 200u;
+    }
+    return playingEffect_ == Effect::Matrix ? 3200u : 1200u;
 }
 
 bool Animator::render(uint32_t now, uint32_t* pixels) {
@@ -106,9 +168,36 @@ bool Animator::render(uint32_t now, uint32_t* pixels) {
         active_ = false;
         dirty_ = true;
     }
-    if (!dirty_ && (!active_ || uint32_t(now - renderedAt_) < 33u)) return false;
+    if (!dirty_) {
+        if (!active_) return false;
+        if (playingEffect_ == Effect::Noise) {
+            if (elapsed / 50u == uint32_t(renderedAt_ - startedAt_) / 50u) return false;
+        } else if (uint32_t(now - renderedAt_) < 33u) return false;
+    }
     renderedAt_ = now;
     dirty_ = false;
+
+    if (active_ && playingEffect_ == Effect::Noise) {
+        // Keep each noise pattern for 50 ms, even if brightness/color forces a redraw.
+        const uint32_t revealEnd = duration() - 200u;
+        const uint32_t patternTime = elapsed < revealEnd ? elapsed : revealEnd;
+        uint32_t state = (noiseState_ ^ ((patternTime / 50u + 1u) * 0x9e3779b9u)) | 1u;
+        uint32_t noiseColor = dim(color_, 153); // 60% (40% reduction); settled letters use full color.
+        const uint32_t revealed = elapsed < 1000u ? 0u : 1u + (elapsed - 1000u) / 200u;
+        const uint32_t settledCount = revealed < noiseLetterCount_ ? revealed : noiseLetterCount_;
+        const uint8_t density = noiseLetterCount_ ? 50u - 40u * settledCount / noiseLetterCount_ : 50u;
+        if (elapsed >= revealEnd) {
+            // Freeze the final sparse pattern and fade it out over 200 ms.
+            noiseColor = dim(noiseColor, (200u - (elapsed - revealEnd)) * 255u / 200u);
+        }
+        for (uint16_t i = 0; i < PixelCount; ++i) {
+            nextRandom(state);
+            const bool settled = i < Rows * Columns && noiseRanks_[i] != 255 &&
+                noiseRanks_[i] < revealed;
+            pixels[i] = settled ? color_ : (state % 100u < density) ? noiseColor : 0;
+        }
+        return true;
+    }
 
     const Frame* minuteFrame = &target_;
     uint32_t minuteColor = color_;
@@ -123,7 +212,7 @@ bool Animator::render(uint32_t now, uint32_t* pixels) {
         minuteFrame = &frame;
         minuteColor = dim(color_, level);
 
-        switch (effect_) {
+        switch (playingEffect_) {
         case Effect::Fadeout:
             draw(frame, minuteColor, pixels);
             break;

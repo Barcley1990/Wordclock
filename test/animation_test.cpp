@@ -7,6 +7,7 @@
 using namespace ClockAnimation;
 
 static constexpr uint32_t Color = 0xcc8040;
+static constexpr uint32_t NoiseColor = 0x7a4c26;
 static Frame oldFrame() {
     Frame f;
     f.rows[2] = 1u << 2;
@@ -155,19 +156,128 @@ int main() {
     assert(matrix.render(3300, pixels) && !matrix.active());
     expectFrame(pixels, newFrame()); // selected color returns
 
+    auto noise = prepare(Effect::Noise, pixels);
+    noise.setFrame(newFrame(), 100);
+    uint32_t previousNoise[PixelCount] = {};
+    for (uint32_t elapsed = 0; elapsed < 1000; elapsed += 50) {
+        // Repeated RTC polls must not restart the transition.
+        noise.setFrame(newFrame(), 100 + elapsed);
+        assert(noise.render(100 + elapsed, pixels) && noise.active());
+        unsigned lit = 0;
+        bool changed = false;
+        for (uint16_t i = 0; i < PixelCount; ++i) {
+            assert(pixels[i] == 0 || pixels[i] == NoiseColor);
+            lit += pixels[i] != 0;
+            changed = changed || pixels[i] != previousNoise[i];
+            previousNoise[i] = pixels[i];
+        }
+        assert(lit > 0 && lit < PixelCount && changed);
+        assert(!noise.render(149 + elapsed, pixels));
+        noise.requestRedraw();
+        assert(noise.render(149 + elapsed, pixels));
+        for (uint16_t i = 0; i < PixelCount; ++i) assert(pixels[i] == previousNoise[i]);
+    }
+    assert(noise.render(1300, pixels) && !noise.active());
+    expectFrame(pixels, newFrame());
+
+    // Letters settle at 200 ms intervals; noise gets sparser, then fades for 200 ms.
+    bool randomFirstObserved = false;
+    for (uint32_t start : {100u, 1234u, 5678u, UINT32_MAX - 600u}) {
+        auto reveal = prepare(Effect::Noise, pixels, start - 1);
+        Frame text;
+        text.rows[1] = (1u << Columns) - 1u;
+        text.rows[8] = 1u << 3;
+        reveal.setFrame(text, start);
+        bool knownSettled[PixelCount] = {};
+        unsigned initialNoise = 0, lateNoise = 0;
+        for (uint32_t elapsed = 0; elapsed < 3200; elapsed += 50) {
+            assert(reveal.render(start + elapsed, pixels) && reveal.active());
+            unsigned settledCount = 0;
+            for (uint16_t i = 0; i < PixelCount; ++i) {
+                assert(pixels[i] == 0 || pixels[i] == NoiseColor || pixels[i] == Color);
+                const bool targetLetter = i < Rows * Columns && text.pixel(i % Columns, i / Columns);
+                if (!targetLetter) {
+                    assert(pixels[i] != Color);
+                    if (elapsed < 200) initialNoise += pixels[i] != 0;
+                    if (elapsed >= 3000) lateNoise += pixels[i] != 0;
+                    continue;
+                }
+                if (knownSettled[i]) assert(pixels[i] == Color);
+                if (pixels[i] == Color) {
+                    knownSettled[i] = true;
+                    if (elapsed == 1000 && i != Columns) randomFirstObserved = true;
+                }
+                settledCount += knownSettled[i];
+            }
+            const unsigned revealed = elapsed < 1000 ? 0 : 1 + (elapsed - 1000) / 200;
+            assert(settledCount == revealed);
+        }
+        assert(initialNoise > lateNoise * 2); // Equal sample counts, density falls from 50% to ~10%.
+        uint32_t previousPixels[PixelCount];
+        unsigned fadingPixels = 0;
+        for (uint32_t elapsed = 3200; elapsed < 3400; elapsed += 50) {
+            assert(reveal.render(start + elapsed, pixels) && reveal.active());
+            for (uint16_t i = 0; i < PixelCount; ++i) {
+                const bool targetLetter = i < Rows * Columns && text.pixel(i % Columns, i / Columns);
+                if (targetLetter) assert(pixels[i] == Color);
+                else if (elapsed == 3200) fadingPixels += pixels[i] != 0;
+                else {
+                    if (previousPixels[i]) assert(pixels[i] < previousPixels[i]);
+                    else assert(pixels[i] == 0); // The fading pattern never jumps or adds pixels.
+                }
+                previousPixels[i] = pixels[i];
+            }
+        }
+        assert(fadingPixels > 0);
+        assert(reveal.render(start + 3400, pixels) && !reveal.active());
+        expectFrame(pixels, text);
+    }
+    assert(randomFirstObserved);
+
+    // Random selects a concrete animated effect once and keeps it throughout the transition.
+    auto random = prepare(Effect::Random, pixels);
+    const Effect candidates[] = {Effect::Fadeout, Effect::Matrix, Effect::LeftRight, Effect::Noise};
+    bool seen[4] = {};
+    const uint32_t times[] = {0, 400, 800, 1100, 1600, 3300};
+    for (uint32_t trial = 0; trial < 64; ++trial) {
+        const uint32_t start = 100 + trial * 5000;
+        uint32_t snapshots[6][PixelCount];
+        bool active[6];
+        random.preview(Effect::Random, start);
+        for (unsigned t = 0; t < 6; ++t) {
+            random.render(start + times[t], pixels);
+            for (unsigned i = 0; i < PixelCount; ++i) snapshots[t][i] = pixels[i];
+            active[t] = random.active();
+        }
+        unsigned matches = 0;
+        for (unsigned c = 0; c < 4; ++c) {
+            auto concrete = prepare(Effect::None, pixels);
+            concrete.preview(candidates[c], start);
+            bool equal = true;
+            for (unsigned t = 0; t < 6; ++t) {
+                concrete.render(start + times[t], pixels);
+                equal = equal && active[t] == concrete.active();
+                for (unsigned i = 0; i < PixelCount; ++i) equal = equal && pixels[i] == snapshots[t][i];
+            }
+            if (equal) { ++matches; seen[c] = true; }
+        }
+        assert(matches == 1); // Neither None nor a re-selection mid-animation is allowed.
+    }
+    for (bool selected : seen) assert(selected);
+
     // Every effect must render only in bounds, finish, and handle millis wrap.
     for (uint8_t i = 0; i < OptionCount; ++i) {
         const uint32_t start = UINT32_MAX - 500;
         auto a = prepare(Options[i].effect, pixels, start - 1);
         a.setFrame(newFrame(), start);
-        for (uint32_t elapsed = 0; elapsed <= 4000; ++elapsed) {
+        for (uint32_t elapsed = 0; elapsed <= 6000; ++elapsed) {
             a.render(start + elapsed, pixels);
         }
         assert(!a.active());
         expectFrame(pixels, newFrame());
-        assert(!a.render(start + 5000, pixels));
+        assert(!a.render(start + 6001, pixels));
         a.requestRedraw(); // brightness change regenerates original RGB values
-        assert(a.render(start + 5001, pixels));
+        assert(a.render(start + 6002, pixels));
         expectFrame(pixels, newFrame());
     }
 
@@ -211,7 +321,7 @@ int main() {
         changed.minutes = current.minutes;
         a.setFrame(changed, now);
         assert(a.active() == (Options[i].effect != Effect::None));
-        assert(a.render(now + 4000, pixels) && !a.active());
+        assert(a.render(now + 5000, pixels) && !a.active());
         expectFrame(pixels, changed);
     }
 
@@ -225,6 +335,33 @@ int main() {
     assert(ongoing.active());
     assert(ongoing.render(3300, pixels) && !ongoing.active());
     expectFrame(pixels, newDots);
+
+    // Preview works without a text change, even with the saved effect disabled.
+    for (uint8_t i = 0; i < OptionCount; ++i) {
+        auto a = prepare(Effect::None, pixels);
+        a.preview(Options[i].effect, 100);
+        assert(a.active() == (Options[i].effect != Effect::None));
+        assert(a.render(100, pixels));
+        a.setFrame(oldFrame(), 1000); // RTC poll preserves the preview.
+        assert(a.render(5100, pixels) == (Options[i].effect != Effect::None));
+        assert(!a.active());
+        expectFrame(pixels, oldFrame());
+        a.setFrame(newFrame(), 6000); // Preview never changes the saved effect.
+        assert(a.render(6000, pixels) && !a.active());
+        expectFrame(pixels, newFrame());
+    }
+    auto preview = prepare(Effect::Matrix, pixels);
+    preview.preview(Effect::Noise, 100);
+    preview.preview(Effect::Fadeout, 200); // A new selection replaces a running test.
+    assert(preview.render(1400, pixels) && !preview.active());
+    expectFrame(pixels, oldFrame());
+    preview.setFrame(newFrame(), 1500);
+    assert(preview.render(4700, pixels) && !preview.active()); // Saved Matrix duration.
+    expectFrame(pixels, newFrame());
+    preview.preview(Effect::Noise, 5000);
+    preview.preview(Effect::None, 5001);
+    assert(preview.render(5001, pixels) && !preview.active());
+    expectFrame(pixels, newFrame());
 
     puts("Animation tests passed");
 }

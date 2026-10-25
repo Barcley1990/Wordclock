@@ -467,6 +467,20 @@ static void setupWebServer() {
                   "\",\"brightness\":" + String(gClockBrightness) +
                   ",\"effective_brightness\":" + String(gEffectiveBrightness) + "}");
   });
+  server.on("/api/animation/preview", HTTP_POST, [](AsyncWebServerRequest* request) {
+    ClockAnimation::Effect effect;
+    if (!request->hasParam("animation", true) ||
+        !ClockAnimation::parseEffect(request->getParam("animation", true)->value().c_str(), effect)) {
+      request->send(400, "application/json", "{\"error\":\"invalid animation\"}");
+      return;
+    }
+    if (!wordclock) {
+      request->send(503, "application/json", "{\"error\":\"clock unavailable\"}");
+      return;
+    }
+    wordclock->previewAnimation(effect);
+    request->send(200, "application/json", "{\"ok\":true}");
+  });
   server.on("/api/settings", HTTP_GET, [](AsyncWebServerRequest* request) {
     String animationOptions = "[";
     for (uint8_t i = 0; i < ClockAnimation::OptionCount; ++i) {

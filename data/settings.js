@@ -3,6 +3,7 @@
   const animationEl = document.getElementById("animation");
   const animationSaveEl = document.getElementById("animation-save");
   const animationStatusEl = document.getElementById("animation-status");
+  const animationTestEl = document.getElementById("animation-test");
   const autoForm = document.getElementById("auto-form");
   const autoStatusEl = document.getElementById("auto-status");
   const autoEnabledEl = document.getElementById("auto-enabled");
@@ -38,6 +39,7 @@
         animationEl.value = data.animation || "none";
         animationEl.disabled = false;
         animationSaveEl.disabled = false;
+        animationTestEl.disabled = false;
         animationStatusEl.textContent = "Animation loaded.";
       } else {
         animationStatusEl.textContent = "Animation requires updated firmware.";
@@ -62,6 +64,27 @@
     }
   };
 
+  animationEl.addEventListener("change", async () => {
+    if (!animationTestEl.checked || animationEl.disabled) return;
+    // Serialize requests so rapid selections cannot arrive out of order.
+    animationEl.disabled = true;
+    animationStatusEl.textContent = "Starting test...";
+    try {
+      const res = await fetch("/api/animation/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ animation: animationEl.value }),
+      });
+      animationStatusEl.textContent = res.ok
+        ? "Test started on the clock. Selection has not been saved."
+        : "Failed to start test. Please retry.";
+    } catch (err) {
+      animationStatusEl.textContent = "Network error. Please retry.";
+    } finally {
+      animationEl.disabled = false;
+    }
+  });
+
   animationForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     animationSaveEl.disabled = true;
@@ -73,7 +96,7 @@
         body: new URLSearchParams({ animation: animationEl.value }),
       });
       animationStatusEl.textContent = res.ok
-        ? "Saved. Plays at the next minute change."
+        ? "Saved. Plays at the next text change."
         : "Failed to save animation. Please retry.";
     } catch (err) {
       animationStatusEl.textContent = "Network error. Please retry.";

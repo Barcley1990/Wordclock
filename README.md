@@ -28,7 +28,7 @@ Wordclock firmware for an ESP-WROOM-02 (ESP8266) based clock with:
 - Rolling median filter over 1000 ms (10 samples)
 - Filtered ambient lux logging every 1000 ms
 - Brightness mapping from ambient lux to LED brightness
-- Selectable time-change animations: none (default), fadeout, Matrix, left-right
+- Selectable time-change animations: none (default), fadeout, Matrix, left-right, Noise, Random
 
 ## Hardware
 
@@ -300,17 +300,25 @@ Select an effect under **Settings → Time Change Animation** and save it.
 The selection persists in `/appearance.cfg` as `animation=<id>`. Existing
 settings files without this key keep the default `none`.
 
+Enable the **Test** switch to play the selected animation once immediately on
+the clock whenever you change the dropdown. Tests use the current time text;
+they do not change the saved effect. Use **Save Animation** to persist a choice.
+The switch starts off on every page load. `POST /api/animation/preview` accepts
+an `animation` effect ID and starts this one-shot preview without writing settings.
+
 | ID | Behavior |
 | --- | --- |
 | `none` | Immediate update, as before |
 | `fadeout` | Fade the old time to black, then fade in the new time (1.2 s) |
 | `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (3.2 s) |
+| `noise` | Starts with 1 s of random LED patterns, changing every 50 ms in the selected color at 60% brightness (40% reduction). At 1 s the first random target letter stays lit at full selected brightness, followed by another every 200 ms without repeats. Noise density gradually falls from 50% to 10%. When the last letter settles, the remaining pattern freezes and fades out over 200 ms; the minute dots then show the new time. Duration depends on text length |
+| `random` | Chooses Fadeout, Matrix, Left-right or Noise independently for each text change or test preview. None and Random itself are excluded; the chosen effect plays to completion. Repeats are possible |
 | `left-right` | Occupied text rows alternate directions from top to bottom; empty rows do not count. The first occupied row moves left to right, the second right to left, the third left to right, etc. Old text slides out, then new text slides in from the opposite edge; directions are determined separately for each text (1.2 s) |
 
 Transitions occur only when the displayed word text changes, normally every
 five minutes. The four minute LEDs update immediately between text changes,
 without starting an animation. Boot shows the current time immediately. The
-minute LEDs fade during text transitions. Changing the effect during a transition
+minute LEDs fade during other text transitions and blink randomly during Noise. Changing the effect during a transition
 immediately shows the new time; the selected effect starts on the next text
 change. Manual and automatic
 brightness still apply to every frame.
@@ -318,7 +326,7 @@ brightness still apply to every frame.
 `ClockAnimation::Animator` is a hardware-independent renderer for the current
 11×10 layout and four minute LEDs. It uses fixed-size frames, no dynamic
 allocation or delays, and renders at approximately 30 fps only during an effect
-or when appearance changes. `loop()` services ArduinoOTA before rendering.
+or when appearance changes. Noise updates at 20 fps. `loop()` services ArduinoOTA before rendering.
 To add an effect, extend `Effect`, the `Options` registry and the renderer in
 `include/clock_animation.h` / `src/clock_animation.cpp`. The dropdown gets its
 options from the API, so it does not need a separate hard-coded effect list.
@@ -358,7 +366,7 @@ Returns:
 - `auto_brightness_min`
 - `auto_brightness_max`
 - `ambient_filtered_lux`
-- `animation`: `none`, `fadeout`, `matrix`, or `left-right`
+- `animation`: `none`, `fadeout`, `matrix`, `left-right`, `noise`, or `random`
 - `animation_options`: available `{id, label}` pairs for the dropdown
 
 ### `POST /api/settings`

@@ -183,6 +183,7 @@ public:
     /** Render at most one animation frame; call frequently from loop(). */
     void animate(uint32_t now);
     void setAnimation(ClockAnimation::Effect effect) { _animator.setEffect(effect); }
+    void previewAnimation(ClockAnimation::Effect effect) { _animator.preview(effect, millis()); }
     void setBrightness(uint8_t brightness) {
         _brightness = brightness;
         Adafruit_NeoPixel::setBrightness(brightness);
