@@ -55,6 +55,16 @@ static uint32_t dim(uint32_t color, uint8_t level) {
     return (r << 16) | (g << 8) | b;
 }
 
+static uint32_t blend(uint32_t from, uint32_t to, uint8_t level) {
+    uint32_t color = 0;
+    for (uint8_t shift = 0; shift <= 16; shift += 8) {
+        const uint32_t channel = (((from >> shift) & 255u) * (255u - level) +
+                                  ((to >> shift) & 255u) * level) / 255u;
+        color |= channel << shift;
+    }
+    return color;
+}
+
 static void draw(const Frame& frame, uint32_t color, uint32_t* pixels,
                  int alternatingOffsetX = 0) {
     uint8_t occupiedRow = 0;
@@ -83,6 +93,7 @@ void Animator::setFrame(const Frame& frame, uint32_t now) {
     initialized_ = true;
     startedAt_ = now;
     prepareNoise(now);
+    prepareMatrix(now);
     dirty_ = true;
 }
 
@@ -105,6 +116,7 @@ void Animator::preview(Effect effect, uint32_t now) {
     playingEffect_ = resolveEffect(effect, now);
     startedAt_ = now;
     prepareNoise(now);
+    prepareMatrix(now);
     active_ = effect != Effect::None;
     dirty_ = true;
 }
@@ -114,6 +126,16 @@ static uint32_t nextRandom(uint32_t& state) {
     state ^= state >> 17;
     state ^= state << 5;
     return state;
+}
+
+void Animator::prepareMatrix(uint32_t now) {
+    if (playingEffect_ != Effect::Matrix) return;
+    uint32_t state = (now ^ 0xa341316cu) | 1u;
+    for (uint8_t x = 0; x < Columns; ++x) {
+        matrixStep_[x] = 55u + nextRandom(state) % 46u;
+        matrixOffset_[x] = nextRandom(state) % (Rows + 7u);
+        matrixRevealDelay_[x] = nextRandom(state) % 181u;
+    }
 }
 
 Effect Animator::resolveEffect(Effect effect, uint32_t now) {
@@ -151,6 +173,62 @@ void Animator::prepareNoise(uint32_t now) {
     }
     for (uint8_t rank = 0; rank < noiseLetterCount_; ++rank) {
         noiseRanks_[letters[rank]] = rank;
+    }
+}
+
+void Animator::renderMatrix(uint32_t elapsed, uint32_t* pixels) const {
+    constexpr uint32_t green = 0x00ff00;
+    constexpr uint32_t oldFadeEnd = 300u;
+    constexpr uint32_t rainFadeEnd = 600u;
+    constexpr uint32_t revealStart = 1600u; // One full second of rain after fading in.
+    constexpr uint32_t revealEnd = 2800u;
+    constexpr uint32_t rainEnd = 3000u;
+    const Frame* minuteFrame = &target_;
+    uint32_t minuteColor = 0;
+
+    if (elapsed < oldFadeEnd) {
+        const uint32_t oldColor = dim(color_, (oldFadeEnd - elapsed) * 255u / oldFadeEnd);
+        draw(previous_, oldColor, pixels);
+        minuteFrame = &previous_;
+        minuteColor = oldColor;
+    } else if (elapsed >= rainEnd) {
+        const uint32_t finalColor = blend(green, color_, (elapsed - rainEnd) * 255u / 200u);
+        draw(target_, finalColor, pixels);
+        minuteColor = finalColor;
+    } else {
+        const uint8_t rainLevel = elapsed < rainFadeEnd ?
+            (elapsed - oldFadeEnd) * 255u / (rainFadeEnd - oldFadeEnd) :
+            elapsed >= revealEnd ? (rainEnd - elapsed) * 255u / (rainEnd - revealEnd) : 255u;
+        // Freeze the last rain frame while it fades, keeping the emerging text still.
+        const uint32_t rainTime = (elapsed < revealEnd ? elapsed : revealEnd) - oldFadeEnd;
+        for (uint8_t x = 0; x < Columns; ++x) {
+            const int head = (rainTime / matrixStep_[x] + matrixOffset_[x]) % (Rows + 7u);
+            for (uint8_t y = 0; y < Rows; ++y) {
+                const uint32_t settleAt = revealStart + matrixRevealDelay_[x] + y * 110u;
+                const bool settled = target_.pixel(x, y) && elapsed >= settleAt;
+                uint32_t color = 0;
+                if (settled) color = green;
+                else {
+                    uint8_t brightness = 0;
+                    // Two staggered streams per column roughly double the code density.
+                    for (uint8_t stream = 0; stream < 2; ++stream) {
+                        const int streamHead = (head + stream * ((Rows + 7u) / 2u)) % (Rows + 7u);
+                        const int distance = streamHead - y;
+                        const uint8_t level = distance == 0 ? 255u :
+                            distance > 0 && distance <= 6 ? 180u / (distance + 1u) : 0u;
+                        if (level > brightness) brightness = level;
+                    }
+                    color = dim(dim(green, brightness), rainLevel);
+                }
+                pixels[y * Columns + x] = color;
+            }
+        }
+        if (elapsed >= revealEnd) {
+            minuteColor = dim(green, (elapsed - revealEnd) * 255u / (rainEnd - revealEnd));
+        }
+    }
+    for (uint8_t i = 0; i < MinuteLeds; ++i) {
+        pixels[Rows * Columns + i] = (minuteFrame->minutes & (1u << i)) ? minuteColor : 0;
     }
 }
 
@@ -199,6 +277,11 @@ bool Animator::render(uint32_t now, uint32_t* pixels) {
         return true;
     }
 
+    if (active_ && playingEffect_ == Effect::Matrix) {
+        renderMatrix(elapsed, pixels);
+        return true;
+    }
+
     const Frame* minuteFrame = &target_;
     uint32_t minuteColor = color_;
     if (!active_) {
@@ -220,35 +303,6 @@ bool Animator::render(uint32_t now, uint32_t* pixels) {
             // Alternate occupied rows only; empty rows do not change direction.
             const int distance = phase * Columns / half;
             draw(frame, color_, pixels, entering ? distance - Columns : distance);
-            break;
-        }
-        case Effect::Matrix: {
-            minuteColor = dim(0x00ff40, level);
-            // Stagger columns and leave a dim trail above the falling glyphs.
-            const int travel = phase * (Rows + 8) / half;
-            for (uint8_t x = 0; x < Columns; ++x) {
-                const int delay = (x * 7) % 5;
-                int offset = travel - delay;
-                if (offset < 0) offset = 0;
-                if (entering) {
-                    offset -= Rows;
-                    if (offset > 0) offset = 0;
-                }
-                for (uint8_t y = 0; y < Rows; ++y) {
-                    uint32_t color = 0;
-                    if (frame.pixel(x, y - offset)) {
-                        color = frame.pixel(x, y + 1 - offset) ? 0x00ff40 : 0x90ffb0;
-                    } else if (offset != 0) {
-                        for (uint8_t tail = 1; tail <= 3; ++tail) {
-                            if (frame.pixel(x, y + tail - offset)) {
-                                color = dim(0x00ff40, 100u / tail);
-                                break;
-                            }
-                        }
-                    }
-                    pixels[y * Columns + x] = color;
-                }
-            }
             break;
         }
         default:

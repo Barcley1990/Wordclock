@@ -56,12 +56,17 @@ private:
     uint32_t randomState_ = 0x9e3779b9u;
     uint8_t noiseRanks_[Rows * Columns] = {};
     uint8_t noiseLetterCount_ = 0;
+    uint8_t matrixStep_[Columns] = {};
+    uint8_t matrixOffset_[Columns] = {};
+    uint8_t matrixRevealDelay_[Columns] = {};
     bool initialized_ = false;
     bool active_ = false;
     bool dirty_ = true;
 
     uint32_t duration() const;
     void prepareNoise(uint32_t now);
+    void prepareMatrix(uint32_t now);
+    void renderMatrix(uint32_t elapsed, uint32_t* pixels) const;
     Effect resolveEffect(Effect effect, uint32_t now);
 };
 

@@ -1,5 +1,7 @@
 # Wordclock_v2 (ESP8266 + PlatformIO)
 
+Current version: **0.4.0**.
+
 Wordclock firmware for an ESP-WROOM-02 (ESP8266) based clock with:
 - WS2812 LED word matrix
 - DS1302 RTC
@@ -310,7 +312,7 @@ an `animation` effect ID and starts this one-shot preview without writing settin
 | --- | --- |
 | `none` | Immediate update, as before |
 | `fadeout` | Fade the old time to black, then fade in the new time (1.2 s) |
-| `matrix` | Staggered green columns fall downward with trails; the new time settles and returns to the selected color (3.2 s) |
+| `matrix` | Old time fades out for 300 ms, then independent green code rain fades in for 300 ms and runs freely for 1 s. Two staggered streams per column create dense rain at randomized speeds. Falling heads and settled letters share saturated green (#00FF00); trails use the same hue at lower brightness. New time letters lock in from top to bottom over 1.2 s, the remaining rain fades for 200 ms, then the text blends to the selected color over 200 ms (3.2 s total) |
 | `noise` | Starts with 1 s of random LED patterns, changing every 50 ms in the selected color at 60% brightness (40% reduction). At 1 s the first random target letter stays lit at full selected brightness, followed by another every 200 ms without repeats. Noise density gradually falls from 50% to 10%. When the last letter settles, the remaining pattern freezes and fades out over 200 ms; the minute dots then show the new time. Duration depends on text length |
 | `random` | Chooses Fadeout, Matrix, Left-right or Noise independently for each text change or test preview. None and Random itself are excluded; the chosen effect plays to completion. Repeats are possible |
 | `left-right` | Occupied text rows alternate directions from top to bottom; empty rows do not count. The first occupied row moves left to right, the second right to left, the third left to right, etc. Old text slides out, then new text slides in from the opposite edge; directions are determined separately for each text (1.2 s) |

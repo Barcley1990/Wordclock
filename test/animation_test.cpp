@@ -144,17 +144,124 @@ int main() {
     assert(sparseSlide.render(1300, pixels) && !sparseSlide.active());
     expectFrame(pixels, sparseNew);
 
-    auto matrix = prepare(Effect::Matrix, pixels);
-    matrix.setFrame(newFrame(), 100);
-    assert(matrix.render(500, pixels));
-    assert(pixels[2 * Columns + 2] != 0); // staggered column just starts
-    assert(matrix.render(700, pixels));
-    assert(pixels[4 * Columns + 2] == 0x90ffb0); // falls downward
-    assert(pixels[3 * Columns + 2] == 0x006419); // trailing green above
-    assert(matrix.render(1700, pixels) && matrix.active()); // still active after old duration
-    assert(matrix.render(3267, pixels) && matrix.active());
-    assert(matrix.render(3300, pixels) && !matrix.active());
-    expectFrame(pixels, newFrame()); // selected color returns
+    // Matrix fades the old time out, then runs code independently of either text.
+    uint32_t firstRain[PixelCount] = {};
+    bool differentTransitions = false;
+    for (uint32_t start : {101u, 1234u, UINT32_MAX - 200u}) {
+        Animator matrix, reference;
+        Frame outgoing, incoming, otherOutgoing;
+        outgoing.rows[0] = 0x7ff;
+        outgoing.rows[8] = 0x555;
+        outgoing.minutes = 8;
+        incoming.rows[1] = 0x555;
+        incoming.rows[5] = 0x7ff;
+        incoming.rows[9] = 0x2aa;
+        incoming.minutes = 15;
+        for (auto& row : otherOutgoing.rows) row = 0x7ff;
+        matrix.setColor(Color);
+        reference.setColor(0x123456);
+        matrix.setEffect(Effect::Matrix);
+        reference.setEffect(Effect::Matrix);
+        matrix.setFrame(outgoing, start - 1);
+        reference.setFrame(otherOutgoing, start - 1);
+        matrix.render(start - 1, pixels);
+        matrix.setFrame(incoming, start);
+        reference.setFrame(Frame{}, start);
+        assert(matrix.render(start, pixels));
+        expectFrame(pixels, outgoing);
+        assert(matrix.render(start + 150, pixels));
+        for (unsigned i = 0; i < PixelCount; ++i) {
+            const bool lit = i < Rows * Columns ? outgoing.pixel(i % Columns, i / Columns) :
+                (outgoing.minutes & (1u << (i - Rows * Columns))) != 0;
+            assert(pixels[i] == (lit ? 0x653f1fu : 0u));
+        }
+        assert(matrix.render(start + 300, pixels));
+        for (auto pixel : pixels) assert(pixel == 0); // Old text is gone before rain fades in.
+        unsigned fadedMaximum = 0, fullMaximum = 0;
+        unsigned rainLit = 0, rainSamples = 0;
+        bool rainOutsideText = false, rainMoved = false;
+        uint32_t previousPixels[PixelCount] = {};
+        for (uint32_t elapsed = 360; elapsed < 1600; elapsed += 60) {
+            assert(matrix.render(start + elapsed, pixels));
+            uint32_t referencePixels[PixelCount];
+            assert(reference.render(start + elapsed, referencePixels));
+            for (unsigned i = 0; i < PixelCount; ++i) {
+                assert(pixels[i] == referencePixels[i]); // Pure rain ignores old/new text and clock color.
+                if (i >= Rows * Columns) { assert(pixels[i] == 0); continue; }
+                const unsigned r = (pixels[i] >> 16) & 255;
+                const unsigned g = (pixels[i] >> 8) & 255;
+                const unsigned b = pixels[i] & 255;
+                assert(r == 0 && b == 0); // Rain and settled text share pure green.
+                if (elapsed >= 600) { rainLit += g != 0; ++rainSamples; }
+                if (elapsed < 600 && g > fadedMaximum) fadedMaximum = g;
+                if (elapsed >= 600 && g > fullMaximum) fullMaximum = g;
+                if (elapsed >= 600 && previousPixels[i] != pixels[i]) rainMoved = true;
+                if (pixels[i] && !outgoing.pixel(i % Columns, i / Columns) &&
+                    !incoming.pixel(i % Columns, i / Columns)) rainOutsideText = true;
+                previousPixels[i] = pixels[i];
+                if (elapsed == 960) {
+                    if (start == 101) firstRain[i] = pixels[i];
+                    else differentTransitions = differentTransitions || pixels[i] != firstRain[i];
+                }
+            }
+            if (elapsed == 960) {
+                matrix.requestRedraw();
+                assert(matrix.render(start + elapsed, pixels));
+                for (unsigned i = 0; i < PixelCount; ++i) assert(pixels[i] == referencePixels[i]);
+            }
+        }
+        assert(fadedMaximum < fullMaximum && fullMaximum == 255);
+        assert(rainOutsideText && rainMoved);
+        assert(rainLit * 100 > rainSamples * 70); // Dense rain lights over 70% of the matrix on average.
+
+        // Target letters lock top-to-bottom, with staggered columns, and stay green.
+        bool settled[Rows * Columns] = {};
+        for (uint32_t elapsed = 1600; elapsed < 2800; elapsed += 40) {
+            assert(matrix.render(start + elapsed, pixels));
+            uint32_t rainPixels[PixelCount];
+            assert(reference.render(start + elapsed, rainPixels));
+            for (unsigned i = 0; i < Rows * Columns; ++i) {
+                const unsigned x = i % Columns, y = i / Columns;
+                const bool target = incoming.pixel(x, y);
+                assert((pixels[i] & 0xff00ffu) == 0);
+                if (settled[i]) assert(pixels[i] == 0x00ff00);
+                if (!target || elapsed < 1600 + y * 110) assert(pixels[i] == rainPixels[i]);
+                if (target && elapsed >= 1780 + y * 110) {
+                    assert(pixels[i] == 0x00ff00); // Same exact color as a full-bright falling letter.
+                    settled[i] = true;
+                }
+            }
+        }
+        unsigned fadingPixels = 0;
+        for (uint32_t elapsed = 2800; elapsed < 3000; elapsed += 50) {
+            assert(matrix.render(start + elapsed, pixels));
+            for (unsigned i = 0; i < Rows * Columns; ++i) {
+                if (incoming.pixel(i % Columns, i / Columns)) assert(pixels[i] == 0x00ff00);
+                else if (elapsed == 2800) fadingPixels += pixels[i] != 0;
+                else if (previousPixels[i]) assert(pixels[i] < previousPixels[i]);
+                else assert(pixels[i] == 0);
+                previousPixels[i] = pixels[i];
+            }
+            if (elapsed == 2900) {
+                for (unsigned i = Rows * Columns; i < PixelCount; ++i) assert(pixels[i] == 0x007f00);
+            }
+        }
+        assert(fadingPixels > 0);
+        assert(matrix.render(start + 3000, pixels));
+        for (unsigned i = 0; i < Rows * Columns; ++i) {
+            assert(pixels[i] == (incoming.pixel(i % Columns, i / Columns) ? 0x00ff00u : 0u));
+        }
+        assert(matrix.render(start + 3100, pixels));
+        for (unsigned i = 0; i < PixelCount; ++i) {
+            const bool lit = i < Rows * Columns ? incoming.pixel(i % Columns, i / Columns) :
+                (incoming.minutes & (1u << (i - Rows * Columns))) != 0;
+            assert(pixels[i] == (lit ? 0x65bf1fu : 0u));
+        }
+        matrix.setFrame(incoming, start + 3150); // Repeated RTC polling must not restart Matrix.
+        assert(matrix.render(start + 3200, pixels) && !matrix.active());
+        expectFrame(pixels, incoming);
+    }
+    assert(differentTransitions);
 
     auto noise = prepare(Effect::Noise, pixels);
     noise.setFrame(newFrame(), 100);
